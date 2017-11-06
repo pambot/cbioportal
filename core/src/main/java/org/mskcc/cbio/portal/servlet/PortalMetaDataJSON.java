@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Memorial Sloan-Kettering Cancer Center.
+ * Copyright (c) 2015 - 2016 Memorial Sloan-Kettering Cancer Center.
  *
  * This library is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS
@@ -32,17 +32,15 @@
 
 package org.mskcc.cbio.portal.servlet;
 
+import java.io.*;
+import java.util.*;
+import javax.servlet.ServletException;
+import javax.servlet.http.*;
+import org.json.simple.*;
 import org.mskcc.cbio.portal.dao.*;
 import org.mskcc.cbio.portal.model.*;
 import org.mskcc.cbio.portal.util.*;
 import org.mskcc.cbio.portal.web_api.*;
-
-import org.json.simple.*;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.*;
-import java.io.*;
-import java.util.*;
 
 /**
  * This Servlet Returns a JSON Representation of all Cancer Studies and all Gene
@@ -108,7 +106,7 @@ public class PortalMetaDataJSON extends HttpServlet {
             for (GeneticProfile geneticProfile : geneticProfiles) {
                 Map map = new LinkedHashMap();
                 map.put("id", geneticProfile.getStableId());
-                map.put("alteration_type", geneticProfile.getGeneticAlterationType().toString());
+                map.put("alteration_type", geneticProfile.getGeneticAlterationType().name());
                 map.put("show_in_analysis_tab", geneticProfile.showProfileInAnalysisTab());
                 map.put("name", geneticProfile.getProfileName());
                 map.put("description", geneticProfile.getProfileDescription());
@@ -160,10 +158,10 @@ public class PortalMetaDataJSON extends HttpServlet {
             if (geneSetId != null) {
                 String geneList = "";
                 GeneSetUtil geneSetUtil = GeneSetUtil.getInstance();
-                ArrayList<GeneSet> geneSetList = geneSetUtil.getGeneSetList();
-                for (GeneSet geneSet : geneSetList) {
-                    if (geneSet.getId().replace("/", "").equals(geneSetId)) {
-                        geneList = geneSet.getGeneList();
+                ArrayList<SetOfGenes> geneSetList = geneSetUtil.getGeneSetList();
+                for (SetOfGenes setOfGenes : geneSetList) {
+                    if (setOfGenes.getId().replace("/", "").equals(geneSetId)) {
+                        geneList = setOfGenes.getGeneList();
                         break;
                     }
                 }
@@ -282,19 +280,19 @@ public class PortalMetaDataJSON extends HttpServlet {
                 GeneSetUtil geneSetUtil = GeneSetUtil.getInstance();
                 Map jsonGeneSetMap = new LinkedHashMap();
                 rootMap.put("gene_sets", jsonGeneSetMap);
-                ArrayList<GeneSet> geneSetList = geneSetUtil.getGeneSetList();
+                ArrayList<SetOfGenes> geneSetList = geneSetUtil.getGeneSetList();
                 String partial_genesets_s = httpServletRequest.getParameter(PARTIAL_GENESETS);
                 boolean full_genesets_data = (partial_genesets_s == null || partial_genesets_s.equals("false"));
                 
-                for (GeneSet geneSet : geneSetList) {
+                for (SetOfGenes setOfGenes : geneSetList) {
                     Map geneSetMap = new LinkedHashMap();
-                    geneSetMap.put("name", geneSet.getName());
+                    geneSetMap.put("name", setOfGenes.getName());
                     if (full_genesets_data) {
-                        geneSetMap.put("gene_list", geneSet.getGeneList());
+                        geneSetMap.put("gene_list", setOfGenes.getGeneList());
                     } else {
                         geneSetMap.put("gene_list", "");
                     }
-                    jsonGeneSetMap.put(geneSet.getId(), geneSetMap);
+                    jsonGeneSetMap.put(setOfGenes.getId(), geneSetMap);
                 }
 
                 httpServletResponse.setContentType("application/json");

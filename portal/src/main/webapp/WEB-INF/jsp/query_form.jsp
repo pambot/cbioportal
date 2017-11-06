@@ -37,6 +37,10 @@
 <%@ page import="java.net.URLEncoder" %>
 <%@ page import="org.apache.commons.lang.*" %>
 <%@ page import="org.mskcc.cbio.portal.util.GlobalProperties" %>
+<%@ page import="java.util.ArrayList" %>
+<%@ page import="java.util.Map" %>
+<%@ page import="java.util.Set" %>
+<%@ page import="java.util.List" %>
 
 <%
     org.mskcc.cbio.portal.servlet.ServletXssUtil localXssUtil = ServletXssUtil.getInstance();
@@ -81,6 +85,9 @@
     if (localGeneSetChoice == null) {
         localGeneSetChoice = "user-defined-list";
     }
+    // Get prioritized studies for study selector
+    
+    List<String[]> priorityStudies = GlobalProperties.getPriorityStudies();
 %>
 
 <%
@@ -111,6 +118,25 @@
 
 <script type="text/javascript" src="js/lib/oql/oql-parser.js" charset="utf-8"></script>
 <script type="text/javascript">
+
+    // Prioritized studies for study selector
+    window.priority_studies = [];
+    <% for (String[] group : priorityStudies) {
+            if (group.length > 1) {
+                    out.println("window.priority_studies.push({'category':'"+group[0]+"',");
+                    out.println("'studies':[");
+                    int i = 1;
+                    while (i < group.length) {
+                            if (i >= 2) {
+                                    out.println(",");
+                            }
+                            out.println("'"+group[i]+"'");
+                            i++;
+                    }
+                    out.println("]})");
+            }
+        } %>
+            
     // Store the currently selected options as global variables;
     window.cancer_study_id_selected = '<%= localCancerTypeId%>';
     window.cancer_study_list_param = '<%= QueryBuilder.CANCER_STUDY_LIST%>';

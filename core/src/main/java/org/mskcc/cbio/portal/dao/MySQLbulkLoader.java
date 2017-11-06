@@ -51,7 +51,7 @@ public class MySQLbulkLoader {
    private static boolean bulkLoad = false;
    private static boolean relaxedMode = false;
    
-   private static final Map<String,MySQLbulkLoader> mySQLbulkLoaders = new HashMap<String,MySQLbulkLoader>();
+   private static final Map<String,MySQLbulkLoader> mySQLbulkLoaders = new LinkedHashMap<String,MySQLbulkLoader>();
    /**
     * Get a MySQLbulkLoader
     * @param dbName database name
@@ -77,8 +77,9 @@ public class MySQLbulkLoader {
 	   int checks = 0;
        PreparedStatement stmt = null;
        boolean executedSetFKChecks = false;
+       Connection con = null;
        try {
-            Connection con = JdbcUtil.getDbConnection(MySQLbulkLoader.class);
+            con = JdbcUtil.getDbConnection(MySQLbulkLoader.class);
             stmt = con.prepareStatement("SELECT @@foreign_key_checks;");
             ResultSet result = stmt.executeQuery();
             
@@ -104,16 +105,17 @@ public class MySQLbulkLoader {
         	throw new DaoException(e);
         }
         finally {
-        	mySQLbulkLoaders.clear();
+            mySQLbulkLoaders.clear();
             if (executedSetFKChecks && stmt != null) {
-            	try {
-					stmt.setLong(1, checks);
-					stmt.execute();
-				} catch (SQLException e) {
-					throw new DaoException(e);
-				}
-            	
+                try {
+                    stmt.setLong(1, checks);
+                    stmt.execute();
+                }
+                catch (SQLException e) {
+                    throw new DaoException(e);
+                }            	
             }
+            JdbcUtil.closeAll(MySQLbulkLoader.class, con, stmt, null);
         }
     }
 
@@ -178,7 +180,7 @@ public class MySQLbulkLoader {
             tempFileWriter.write( "\t" );
             tempFileWriter.write( escapeValue(fieldValues[i]) );
          }
-         tempFileWriter.newLine();
+         tempFileWriter.write("\n");;
 
          if( rows++ < numDebuggingRowsToPrint ){
             StringBuffer sb = new StringBuffer( escapeValue(fieldValues[0]) );
@@ -231,7 +233,7 @@ public class MySQLbulkLoader {
          con = JdbcUtil.getDbConnection(MySQLbulkLoader.class);
          stmt = con.createStatement();
          
-         String command = "LOAD DATA LOCAL INFILE '" + tempFileName + "'" + " INTO TABLE " + tableName;
+         String command = "LOAD DATA LOCAL INFILE '" + tempFileName.replace("\\", "\\\\") + "'" + " INTO TABLE " + tableName;
          stmt.execute( command );
          
          int updateCount = stmt.getUpdateCount();
@@ -242,7 +244,8 @@ public class MySQLbulkLoader {
         	 if (stmt.getWarnings() != null) {
         		 otherDetails = "More error/warning details: " + stmt.getWarnings().getMessage();
              }
-             throw new DaoException("DB Error: only "+updateCount+" of the "+nLines+" records were inserted in `" + tableName + "`. " + otherDetails);
+             throw new DaoException("DB Error: only "+updateCount+" of the "+nLines+" records were inserted in `" + tableName + "`. " + otherDetails + 
+            		 " See tmp file for more details: " + tempFileName);
              
          } else {
              tempFileHandle.delete();

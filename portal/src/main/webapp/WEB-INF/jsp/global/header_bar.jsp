@@ -32,49 +32,130 @@
 
 <%@ page import="org.mskcc.cbio.portal.util.GlobalProperties" %>
 <%@ taglib prefix='c' uri='http://java.sun.com/jsp/jstl/core' %>
+<%@ taglib prefix="s" uri="http://www.springframework.org/tags" %>
 <%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
 <%
-	String principal = "";
+    String principal = "";
     String authenticationMethod = GlobalProperties.authenticationMethod();
-	if (authenticationMethod.equals("openid") || authenticationMethod.equals("ldap")) {
-		principal = "principal.name";
-	}
-	else if (authenticationMethod.equals("googleplus") || authenticationMethod.equals("saml") || authenticationMethod.equals("ad")) {
-		principal = "principal.username";
-	}
-	String tagLineImage = (authenticationMethod.equals("saml")) ?
-		"/" + GlobalProperties.getTagLineImage() : GlobalProperties.getTagLineImage();
-	pageContext.setAttribute("tagLineImage", tagLineImage);
-
-    // retrieve right-logo from global properties. Based on the tagLineImage code.
-    String rightLogo = (authenticationMethod.equals("saml")) ?
-            "/" + GlobalProperties.getRightLogo() : GlobalProperties.getRightLogo();
-    pageContext.setAttribute("rightLogo", rightLogo);
+    pageContext.setAttribute("authenticationMethod", authenticationMethod);
+    if (authenticationMethod.equals("openid") || authenticationMethod.equals("ldap")) {
+        principal = "principal.name";
+    }
+    else if (authenticationMethod.equals("googleplus") || authenticationMethod.equals("saml") || authenticationMethod.equals("ad")) {
+        principal = "principal.username";
+    }
+    pageContext.setAttribute("principal", principal);
 %>
-<table width="100%" cellspacing="0px" cellpadding="2px" border="0px">
-	<tr valign="middle">
-		<td valign="middle" width="25%">
-                    <img src="<c:url value="/images/cbioportal_logo.png"/>" height="50px" alt="cBioPortal Logo">
-		</td>
-		<td valign="middle" align="center" width="50%">
-			<img src="<c:url value="${tagLineImage}"/>" alt="Tag Line" style="max-height: 50px;">
-		</td>
-        <td valign="middle" align="right" width="25%">
-            <img src="<c:url value="${rightLogo}"/>" alt="Institute Logo" style="max-height: 50px;">
-        </td>
-	</tr>
-    <!-- Display Sign Out Button for Real (Non-Anonymous) User -->
-    <sec:authorize access="!hasRole('ROLE_ANONYMOUS')">
-	<tr>
-		<td></td><td></td>
-        <td align="right" style="font-size:10px;background-color:white">
-        <% if (authenticationMethod.equals("saml")) { %>
-        You are logged in as <sec:authentication property='<%=principal%>' />. <a href="<c:url value="/saml/logout"/>">Sign out</a>.
-        <%} else { %>
-        You are logged in as <sec:authentication property='<%=principal%>' />. <a href="j_spring_security_logout">Sign out</a>.
-        <% } %>
-        </td>
-    </tr>
+<%-- Calling static methods is not supported in all versions of EL without
+     explicitly defining a function in an external taglib XML file. Using
+     Spring's SpEL instead to keep it short for this one function call --%>
+<s:eval var="rightLogo" expression="T(org.mskcc.cbio.portal.util.GlobalProperties).getRightLogo()"/>
+<s:eval var="samlLogoutLocal" expression="T(org.mskcc.cbio.portal.util.GlobalProperties).getSamlIsLogoutLocal()"/>
 
-    </sec:authorize>
-</table>
+<c:url var="samlLogoutUrl" value="/saml/logout">
+    <c:param name="local" value="${samlLogoutLocal}" />
+</c:url>
+
+<header>
+        <div id="leftHeaderContent">
+        <a id="cbioportal-logo" href="index.do"><img src="<c:url value="/images/cbioportal_logo.png"/>" alt="cBioPortal Logo" /></a>    
+    
+        <nav id="main-nav">
+            <ul>
+                <% if (GlobalProperties.showDataTab()) { %>
+                <li class="internal">
+                    <a href="data_sets.jsp">Data Sets</a>
+                </li>
+                <% } %>
+                <%
+                    //  Hide the Web API and R/MAT Tabs if the Portal Requires Authentication
+                    if (!GlobalProperties.usersMustAuthenticate()) {
+                %>
+                <!-- Added call GlobalProperties to check whether to show the Web API tab -->
+                <% if (GlobalProperties.showWebApiTab()) { %>
+                <li class="internal">
+                    <a href="web_api.jsp">Web API</a>
+                </li>
+                <% } %>
+                <!-- Added call GlobalProperties to check whether to show the R Matlab tab -->
+                <% if (GlobalProperties.showRMatlabTab()) { %>
+                <li class="internal">
+                    <a href="cgds_r.jsp">R/MATLAB</a>
+                </li>
+                <% } %>
+                <% } %>
+                <!-- Added call GlobalProperties to check whether to show the Tutorials tab -->
+                <% if (GlobalProperties.showTutorialsTab()) { %>
+                <li class="internal">
+                    <a href="tutorial.jsp">Tutorials</a>
+                </li>
+                <% } %>
+                <!-- Added call GlobalProperties to check whether to show the Faqs tab -->
+                <% if (GlobalProperties.showFaqsTab()) { %>
+                <li class="internal">
+                    <a href="faq.jsp">FAQ</a>
+                </li>
+                <% } %>
+                <% if (GlobalProperties.showNewsTab()) { %>
+                <li class="internal">
+                    <a href="news.jsp">News</a>
+                </li>
+                <% } %>
+                <!-- Added call GlobalProperties to check whether to show the Tools tab -->
+                <% if (GlobalProperties.showToolsTab()) { %>
+                <li class="internal">
+                    <a href="tools.jsp">Visualize Your Data</a>
+                </li>
+                <% } %>
+                <!-- Added call GlobalProperties to check whether to show the About tab -->
+                <% if (GlobalProperties.showAboutTab()) { %>
+                <li class="internal">
+                    <a href="about_us.jsp">About</a>
+                </li>
+                <% } %>
+                <!-- Added for adding custom header tabs. If the customPageArray is not
+                null, creates list items for the elements in the array. -->
+                <%
+                String [] customPagesArray = GlobalProperties.getCustomHeaderTabs();
+                if(customPagesArray!=null){
+                    // as the customPagesArray should have an even length, there's a problem
+                    // if the length is uneven. In that case, don't add the last page.
+                    // This way, the user will still get feedback for the other customPages
+                    int until=customPagesArray.length - customPagesArray.length%2;
+                    for(int i=0; i<until; i=i+2){ %>
+                        <li class="internal">
+                            <a href="<%=customPagesArray[i].trim()%>"><%=customPagesArray[i+1].trim()%></a>
+                        </li>
+                    <%}
+                }%>
+            </ul>
+        </nav>
+        </div>
+
+        <div id="rightHeaderContent">
+        <%-- Display Sign Out Button for Real (Non-Anonymous) User --%>
+        <sec:authorize access="!hasRole('ROLE_ANONYMOUS')">
+            <div class="userControls">
+            <span class="username"><i class="fa fa-cog" aria-hidden="true"></i></span>&nbsp;
+                
+                <div class="identity">Logged in as <sec:authentication property="${principal}" />&nbsp;|&nbsp;
+                <c:choose>
+                    <c:when test="${authenticationMethod == 'saml'}">
+                        <a href="${samlLogoutUrl}">Sign out</a>
+                    </c:when>
+                    <c:otherwise>
+                        <a href="j_spring_security_logout">Sign out</a>
+                    </c:otherwise>
+                </c:choose>
+                &nbsp;&nbsp;
+                <i class="fa fa-cog" aria-hidden="true"></i>
+                </div>
+            </div>
+        </sec:authorize>
+
+        <c:if test="${rightLogo != ''}">
+            <img id="institute-logo" src="<c:url value="${rightLogo}"/>" alt="Institute Logo" />
+        </c:if>
+        </div>
+
+    </header>

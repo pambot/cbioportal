@@ -88,12 +88,14 @@ public class TestWebService {
       expect(control.isAccessibleCancerStudy(isA(String.class))).andStubReturn(mockTrue);
       expect(control.getUserDetails()).andStubReturn(mockUserDetails);
       replay(control);
-      SpringUtil.setAccessControl(control);
+      new SpringUtil().setAccessControl(control);
+      
+      DaoCancerStudy.reCacheAll();
    }
    
    @After
    public void tearDown() {
-	   SpringUtil.setAccessControl(oldAccessControl);
+	   new SpringUtil().setAccessControl(oldAccessControl);
    }
    
    @Test
@@ -355,7 +357,7 @@ public class TestWebService {
       // profiles, and (b) this requires better test data
       
 //      aNullHttpServletRequest.setParameter(
-//               WebService.GENETIC_PROFILE_ID, privateGeneticProfile.getStableId() + ","
+//               WebService.MOLECULAR_PROFILE_ID, privateGeneticProfile.getStableId() + ","
 //              + publicGeneticProfile.getStableId() );
 //      studies = WebserviceParserUtils.getCancerStudyIDs(aNullHttpServletRequest);
 //      assertTrue( studies.contains(DaoCancerStudy.getCancerStudyByInternalId

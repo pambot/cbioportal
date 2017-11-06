@@ -75,7 +75,7 @@
             var clinicalData = clinicalDataMap[caseId];
             var compareAgainstIds = [caseId];
             var OtherSampleId = clinicalData["OTHER_SAMPLE_ID"];
-            if (cbio.util.checkNullOrUndefined(OtherSampleId)) {
+            if (!cbio.util.checkNullOrUndefined(OtherSampleId)) {
                 compareAgainstIds = compareAgainstIds.concat(OtherSampleId);
             }
             var circle = d3.selectAll(".timelineSeries_0").filter(function (x) {
@@ -101,7 +101,7 @@
                 g = $(circle[0]).parent();
                 g.prop("__data__", $(circle[0]).prop("__data__"));
                 fillColorAndLabelForCase(d3.select(g.get(0)), caseId);
-                clinicalTimeline.addDataPointTooltip(g);
+                window.pvTimeline.addDataPointTooltip(g);
             }
         }
     }
@@ -134,10 +134,11 @@
                         if (specRefNum) {
                             if (specRefNum.length > 1) {
                                 console.warn("More than 1 specimen reference number found in tooltip table");
-                            }
-                            sortOrder = caseIds.indexOf(specRefNum[0][1]);
-                            if (sortOrder === -1) {
-                                sortOrder = Infinity;
+                            } else if (specRefNum.length === 1) {
+                                sortOrder = caseIds.indexOf(specRefNum[0][1]);
+                                if (sortOrder === -1) {
+                                    sortOrder = Infinity;
+                                }
                             }
                         }
                         return sortOrder;
@@ -192,26 +193,44 @@
                 }
 
                 var width = $("#td-content").width() - 75;
-                var timeline = clinicalTimeline
+                window.pvTimeline = clinicalTimeline()
                         .width(width)
                         .data(timeData)
                         .divId("#timeline")
                         .setTimepointsDisplay("Imaging", "square")
                         .orderTracks(["Specimen", "Surgery", "Status", "Diagnostics", "Diagnostic", "Imaging", "Lab_test", "Treatment"])
                         .splitByClinicalAttributes("Lab_test", "TEST")
-                        .sizeByClinicalAttribute("PSA", "RESULT")
-                        .sizeByClinicalAttribute("ALK", "RESULT")
-                        .sizeByClinicalAttribute("TEST", "RESULT")
-                        .sizeByClinicalAttribute("HGB", "RESULT")
-                        .sizeByClinicalAttribute("PHOS", "RESULT")
-                        .sizeByClinicalAttribute("LDH", "RESULT")
+                var splitData = window.pvTimeline.data();
+                // Get TEST names that have a RESULT field in their clinical
+                // tooltip table. We assume the RESULT field contains
+                // integer/float values that can be used to size the dots on the
+                // timeline by 
+                var testsWithResults = splitData.filter(function(x) {
+                    return x.parent_track === 'Lab_test' && 
+                           _.all(x.times.map(
+                                      function(t) {
+                                          return t.tooltip_tables.length === 1 && 
+                                                 t.tooltip_tables[0].filter(function(a) {return a[0] === 'RESULT'}).length > 0;
+                                      })
+                    )
+                }).map(function(x) {
+                    return x.label;
+                });
+                // Scale dot size on timepoint by RESULT field
+                testsWithResults.forEach(function(test) {
+                    window.pvTimeline =
+                        window.pvTimeline
+                        .sizeByClinicalAttribute(test, "RESULT")
+                })
+                window.pvTimeline =
+                        window.pvTimeline
                         .splitByClinicalAttributes("Treatment", ["SUBTYPE", "AGENT"])
                         .collapseAll()
                         .toggleTrackCollapse("Specimen")
                         .enableTrackTooltips(false)
-                        .enableZoom(false)
+						.plugins([{obj: new trimClinicalTimeline("Trim Timeline"), enabled: true}])
                         .addPostTimelineHook(plotCaseLabelsInTimeline);
-                timeline();
+                window.pvTimeline();
                 $("#timeline-container").show();
             }
             ,"json"

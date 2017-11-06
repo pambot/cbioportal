@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Memorial Sloan-Kettering Cancer Center.
+ * Copyright (c) 2015 - 2016 Memorial Sloan-Kettering Cancer Center.
  *
  * This library is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS
@@ -32,18 +32,16 @@
 
 package org.mskcc.cbio.portal.web_api;
 
-import org.cbioportal.persistence.MutationRepository;
+import java.util.*;
+import org.apache.commons.httpclient.URI;
+import org.mskcc.cbio.portal.repository.MutationRepositoryLegacy;
 import org.mskcc.cbio.portal.dao.*;
 import org.mskcc.cbio.portal.model.*;
 import org.mskcc.cbio.portal.model.converter.MutationModelConverter;
-import org.mskcc.cbio.portal.util.*;
 import org.mskcc.cbio.portal.servlet.WebService;
-
-import org.apache.commons.httpclient.URI;
+import org.mskcc.cbio.portal.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.util.*;
 
 /**
  * Class to get mutation data
@@ -60,12 +58,12 @@ public class GetMutationData {
     private String content;
     private ArrayList<String> warningList = new ArrayList<String>();
 
-    private static MutationRepository mutationRepository;
+    private static MutationRepositoryLegacy mutationRepositoryLegacy;
     private static MutationModelConverter mutationModelConverter;
 
     @Autowired
-    public GetMutationData(MutationRepository mutationRepository, MutationModelConverter mutationModelConverter) {
-        GetMutationData.mutationRepository = mutationRepository;
+    public GetMutationData(MutationRepositoryLegacy mutationRepositoryLegacy, MutationModelConverter mutationModelConverter) {
+        GetMutationData.mutationRepositoryLegacy = mutationRepositoryLegacy;
         GetMutationData.mutationModelConverter = mutationModelConverter;
     }
 
@@ -104,7 +102,7 @@ public class GetMutationData {
             //parse each Mutation List retrieved from DaoMutation and add to Main Mutation List
             for (Long entrezID : entrezIDList) {
                 List<ExtendedMutation> tempmutationList = mutationModelConverter.convert(
-                        mutationRepository.getMutations(entrezID.intValue(), GeneticProfile));
+                        mutationRepositoryLegacy.getMutations(entrezID.intValue(), GeneticProfile));
                 for (ExtendedMutation mutation : tempmutationList){
                     // seperate out mutations for the given set of sampleIDS.
                     if (internalSampleIds.contains(mutation.getSampleId()))
@@ -179,7 +177,7 @@ public class GetMutationData {
         //  Iterate through all validated genes, and extract mutation data.
         for (Gene gene : geneList) {
             CanonicalGene canonicalGene = (CanonicalGene) gene;
-            List<ExtendedMutation> mutationList = mutationModelConverter.convert(mutationRepository.getMutations(
+            List<ExtendedMutation> mutationList = mutationModelConverter.convert(mutationRepositoryLegacy.getMutations(
                     (int) canonicalGene.getEntrezGeneId(), geneticProfile.getGeneticProfileId()));
             for (ExtendedMutation mutation:  mutationList) {
                 Integer sampleId = mutation.getSampleId();

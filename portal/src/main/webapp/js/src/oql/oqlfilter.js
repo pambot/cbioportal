@@ -37,13 +37,27 @@ window.OQL = (function () {
     
     var parsedOQLAlterationToSourceOQL = function(alteration) {
 	if (alteration.alteration_type === "cna") {
-	    return alteration.constr_val;
+	    if (alteration.constr_rel === "=") {
+		return alteration.constr_val;
+	    } else {
+		return ["CNA",alteration.constr_rel,alteration.constr_val].join("");
+	    }
 	} else if (alteration.alteration_type === "mut") {
-	    return "MUT" + (alteration.constr_rel ? alteration.constr_rel + alteration.constr_val : "");
+	    if (alteration.constr_rel) {
+		if (alteration.constr_type === "position") {
+		    return ["MUT",alteration.constr_rel,alteration.info.amino_acid,alteration.constr_val].join("");
+		} else {
+		    return ["MUT",alteration.constr_rel,alteration.constr_val].join("");
+		}
+	    } else {
+		return "MUT";
+	    }
 	} else if (alteration.alteration_type === "exp") {
 	    return "EXP" + alteration.constr_rel + alteration.constr_val;
 	} else if (alteration.alteration_type === "prot") {
 	    return "PROT" + alteration.constr_rel + alteration.constr_val;
+	} else if (alteration.alteration_type === "fusion") {
+	    return "FUSION";
 	}
     };
     var unparseOQLQueryLine = function (parsed_oql_query_line) {
@@ -68,7 +82,7 @@ window.OQL = (function () {
 	     *	    //  or null
 	     *	},
 	     *	'mut_type': function(d) {
-	     *	    // returns 'missense', 'nonsense', 'nonstart', 'nonstop', 'frameshift', 'inframe', 'splice', or 'trunc',
+	     *	    // returns 'missense', 'nonsense', 'nonstart', 'nonstop', 'frameshift', 'inframe', 'splice', 'trunc', or 'promoter'
 	     *	    //  or null
 	     *	},
 	     *	'mut_position': function(d) {
@@ -86,6 +100,9 @@ window.OQL = (function () {
 	     *	'prot': function(d) {
 	     *	    // returns a double, protein expression,
 	     *	    // or null
+	     *	},
+	     *	'fusion': function(d) {
+	     *	    // returns true, false, or null
 	     *	}
 	     * }
 	     */
@@ -166,6 +183,21 @@ window.OQL = (function () {
 	    return isDatumWantedByOQLMUTCommand(alt_cmd, datum, accessors);
 	} else if (alt_cmd.alteration_type === 'exp' || alt_cmd.alteration_type === 'prot') {
 	    return isDatumWantedByOQLEXPOrPROTCommand(alt_cmd, datum, accessors, opt_mark_oql_regulation_direction);
+	} else if (alt_cmd.alteration_type === 'fusion') {
+	    return isDatumWantedByFUSIONCommand(alt_cmd, datum, accessors);
+	}
+    };
+    
+    var isDatumWantedByFUSIONCommand = function(alt_cmd, datum, accessors) {
+	/* Helper method for isDatumWantedByOQLAlterationCommand
+	 * In/Out: See isDatumWantedByOQLAlterationCommand
+	 */
+	var d_fusion = accessors.fusion(datum);
+	if (d_fusion === null) {
+	    // If no fusion data, it's not addressed
+	    return 0;
+	} else {
+	    return 2*(+d_fusion) - 1;
 	}
     };
     
@@ -179,7 +211,23 @@ window.OQL = (function () {
 	    return 0;
 	} else {
 	    // Otherwise, return -1 if it doesnt match, 1 if it matches
-	    var match = +(d_cna === alt_cmd.constr_val.toLowerCase());
+	    var match;
+	    if (alt_cmd.constr_rel === "=") {
+		match = +(d_cna === alt_cmd.constr_val.toLowerCase());
+	    } else {
+		var integer_copy_number = {"amp":2, "gain":1, "hetloss":-1, "homdel":-2};
+		var d_int_cna = integer_copy_number[d_cna];
+		var alt_int_cna = integer_copy_number[alt_cmd.constr_val.toLowerCase()];
+		if (alt_cmd.constr_rel === ">") {
+		    match = +(d_int_cna > alt_int_cna);
+		} else if (alt_cmd.constr_rel === ">=") {
+		    match = +(d_int_cna >= alt_int_cna);
+		} else if (alt_cmd.constr_rel === "<") {
+		    match = +(d_int_cna < alt_int_cna);
+		} else if (alt_cmd.constr_rel === "<=") {
+		    match = +(d_int_cna <= alt_int_cna);
+		}
+	    }
 	    return 2 * match - 1; // map 0,1 to -1,1
 	}
     };
@@ -288,7 +336,7 @@ window.OQL = (function () {
 	    return null;
 	};
 	var required_accessors = ['gene', 'cna', 'mut_type', 'mut_position',
-	    'mut_amino_acid_change', 'exp', 'prot'];
+	    'mut_amino_acid_change', 'exp', 'prot', 'fusion'];
 	// default every non-given accessor function to null
 	var accessors = {};
 	for (var i = 0; i < required_accessors.length; i++) {
@@ -347,7 +395,13 @@ window.OQL = (function () {
 		},
 		'mut_type': function(d) {
 		    if (d.genetic_alteration_type === 'MUTATION_EXTENDED') {
-			return d.simplified_mutation_type;
+			if (d.simplified_mutation_type === "fusion") {
+			    return null;
+			} else if (d.amino_acid_change.toLowerCase() === "promoter") {
+			    return "promoter";
+			} else {
+			    return d.simplified_mutation_type;
+			}
 		    } else {
 			return null;
 		    }
@@ -382,6 +436,13 @@ window.OQL = (function () {
 		'prot': function(d) {
 		    if (d.genetic_alteration_type === 'PROTEIN_LEVEL') {
 			return parseFloat(d.profile_data);
+		    } else {
+			return null;
+		    }
+		},
+		'fusion': function(d) {
+		    if (d.genetic_alteration_type === 'MUTATION_EXTENDED') {
+			return (d.simplified_mutation_type === "fusion");
 		    } else {
 			return null;
 		    }

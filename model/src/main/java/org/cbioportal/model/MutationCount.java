@@ -4,42 +4,24 @@ import java.io.Serializable;
 
 public class MutationCount implements Serializable {
 
-    private Integer geneticProfileId;
-    private GeneticProfile geneticProfile;
-    private Integer sampleId;
-    private Sample sample;
+    private String molecularProfileId;
+    private String sampleId;
     private Integer mutationCount;
 
-    public Integer getGeneticProfileId() {
-        return geneticProfileId;
+    public String getMolecularProfileId() {
+        return molecularProfileId;
     }
 
-    public void setGeneticProfileId(Integer geneticProfileId) {
-        this.geneticProfileId = geneticProfileId;
+    public void setMolecularProfileId(String molecularProfileId) {
+        this.molecularProfileId = molecularProfileId;
     }
 
-    public GeneticProfile getGeneticProfile() {
-        return geneticProfile;
-    }
-
-    public void setGeneticProfile(GeneticProfile geneticProfile) {
-        this.geneticProfile = geneticProfile;
-    }
-
-    public Integer getSampleId() {
+    public String getSampleId() {
         return sampleId;
     }
 
-    public void setSampleId(Integer sampleId) {
+    public void setSampleId(String sampleId) {
         this.sampleId = sampleId;
-    }
-
-    public Sample getSample() {
-        return sample;
-    }
-
-    public void setSample(Sample sample) {
-        this.sample = sample;
     }
 
     public Integer getMutationCount() {

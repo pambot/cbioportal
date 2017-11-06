@@ -23,17 +23,22 @@ We also maintain an active [list of RFCs (Requests for Comments)](RFC-List.md) w
 ### 2.2 Authorization and Authentication
 * [User Authorization](User-Authorization.md)
 * [Authenticating Users via SAML](Authenticating-Users-via-SAML.md)
+* [Authenticating Users via LDAP](Authenticating-Users-via-LDAP.md)
+* [Authenticating and Authorizing Users via Keycloak](Authenticating-and-Authorizing-Users-via-keycloak.md)
 
 ### 2.3 Customization 
 * [Customizing your cBioPortal Instance via portal.properties](Customizing-your-instance-of-cBioPortal.md)
 * [More portal.properties Settings](portal.properties-Reference.md)
 
 ### 2.4 Docker
-* [Introduction to Docker](Docker-Introduction.md)
-* [Deploying cBioPortal in Docker](Build-from-Docker.md)
+* [Docker Prerequisites](Docker-Prerequisites.md)
+* [Deploy using Docker](Deploy-Using-Docker.md)
+* [Uninstall Docker cBioPortal](Uninstall-Docker-cBioPortal.md)
+* [Import a Study Using Docker](Import-Study-Using-Docker.md)
 
 ## 3. cBioPortal Maintenance
 * [Updating your cBioPortal Database Scheme](Updating-your-cBioPortal-installation.md)
+* [Update genes and gene aliases](Updating-gene-and-gene_alias-tables.md)
 
 ## 4. Development      
 * [cBioPortal Entity-relationship Diagram](cBioPortal-ER-Diagram.md)
@@ -54,6 +59,7 @@ We also maintain an active [list of RFCs (Requests for Comments)](RFC-List.md) w
    * [Data Loading: What You Need To Change](Data-Loading-What-You-Need-To-Change.md)
    * [Data Loading: Tips and Best Practices](Data-Loading-Tips-and-Best-Practices.md)
    * [Importer Tool](Importer-Tool.md) (deprecated)
+   * [Importing Gene Sets](Import-Gene-Sets.md)
 
 ### 5.2 Datasets
 * [Downloads](Downloads.md)

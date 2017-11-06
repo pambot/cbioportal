@@ -1,53 +1,51 @@
 package org.cbioportal.persistence.mybatis;
 
-import org.apache.ibatis.annotations.Param;
 import org.cbioportal.model.Mutation;
 import org.cbioportal.model.MutationCount;
-import org.cbioportal.persistence.dto.AltCount;
-import org.cbioportal.persistence.dto.KeywordSampleCount;
-import org.cbioportal.persistence.dto.MutatedGeneSampleCount;
-import org.cbioportal.persistence.dto.SignificantlyMutatedGene;
+import org.cbioportal.model.MutationCountByPosition;
+import org.cbioportal.model.MutationCountByGene;
+import org.cbioportal.model.meta.MutationMeta;
 
 import java.util.List;
 
 public interface MutationMapper {
 
-    List<Mutation> getMutationsDetailed(@Param("geneticProfileStableIds") List<String> geneticProfileStableIds,
-                                        @Param("hugoGeneSymbols") List<String> hugoGeneSymbols,
-                                        @Param("sampleStableIds") List<String> sampleStableIds,
-                                        @Param("sampleListStableId") String sampleListStableId);
+    List<Mutation> getMutationsBySampleListId(String molecularProfileId, String sampleListId, List<Integer> entrezGeneIds,
+                                              Boolean snpOnly, String projection, Integer limit, Integer offset, 
+                                              String sortBy, String direction);
 
-    List<AltCount> getMutationsCounts(@Param("type") String type, @Param("hugoGeneSymbol") String hugoGeneSymbol,
-                                      @Param("start") Integer start, @Param("end") Integer end,
-                                      @Param("cancerStudyIdentifiers") List<String> cancerStudyIdentifiers,
-                                      @Param("perStudy") Boolean perStudy);
+    MutationMeta getMetaMutationsBySampleListId(String molecularProfileId, String sampleListId, 
+                                                List<Integer> entrezGeneIds, Boolean snpOnly);
 
-    List<Mutation> getMutations(@Param("sampleIds") List<Integer> sampleIds,
-                                @Param("entrezGeneIds") List<Integer> entrezGeneIds,
-                                @Param("geneticProfileId") Integer geneticProfileId,
-                                @Param("simplified") Boolean simplified);
+    List<Mutation> getMutationsInMultipleMolecularProfiles(List<String> molecularProfileIds, List<String> sampleIds,
+                                                           List<Integer> entrezGeneIds, Boolean snpOnly,
+                                                           String projection, Integer limit, Integer offset,
+                                                           String sortBy, String direction);
 
-    Boolean hasAlleleFrequencyData(@Param("geneticProfileId") Integer geneticProfileId,
-                                   @Param("sampleId") Integer sampleId);
+    MutationMeta getMetaMutationsInMultipleMolecularProfiles(List<String> molecularProfileIds, List<String> sampleIds,
+                                                             List<Integer> entrezGeneIds, Boolean snpOnly);
 
-    void groupConcatMaxLenSet();
+    List<Mutation> getMutationsBySampleIds(String molecularProfileId, List<String> sampleIds, 
+                                           List<Integer> entrezGeneIds, Boolean snpOnly, String projection, 
+                                           Integer limit, Integer offset, String sortBy, String direction);
 
-    List<SignificantlyMutatedGene> getSignificantlyMutatedGenes(@Param("geneticProfileId") Integer geneticProfileId,
-                                                                @Param("entrezGeneIds") List<Integer> entrezGeneIds,
-                                                                @Param("sampleIds") List<Integer> sampleIds,
-                                                                @Param("thresholdRecurrence") Integer thresholdRecurrence,
-                                                                @Param("thresholdNumGenes") Integer thresholdNumGenes);
+    MutationMeta getMetaMutationsBySampleIds(String molecularProfileId, List<String> sampleIds, 
+                                             List<Integer> entrezGeneIds, Boolean snpOnly);
+    
+    List<MutationCountByGene> getSampleCountByEntrezGeneIdsAndSampleIds(String molecularProfileId,
+                                                                        List<String> sampleIds,
+                                                                        List<Integer> entrezGeneIds,
+                                                                        Boolean snpOnly);
 
-    List<MutationCount> countMutationEvents(@Param("geneticProfileId") Integer geneticProfileId,
-                                            @Param("sampleIds") List<Integer> sampleIds);
+    List<MutationCountByGene> getPatientCountByEntrezGeneIdsAndSampleIds(String molecularProfileId,
+                                                                         List<String> patientIds,
+                                                                         List<Integer> entrezGeneIds,
+                                                                         Boolean snpOnly);
 
-    List<MutatedGeneSampleCount> countSamplesWithMutatedGenes(@Param("geneticProfileId") Integer geneticProfileId,
-                                                              @Param("entrezGeneIds") List<Integer> entrezGeneIds);
-
-    List<KeywordSampleCount> countSamplesWithKeywords(@Param("geneticProfileId") Integer geneticProfileId,
-                                                      @Param("keywords") List<String> keywords);
-
-    List<Integer> getGenesOfMutations(@Param("mutationEventIds") List<Integer> mutationEventIds);
-
-    List<String> getKeywordsOfMutations(@Param("mutationEventIds") List<Integer> mutationEventIds);
+    List<MutationCount> getMutationCountsBySampleListId(String molecularProfileId, String sampleListId);
+    
+    List<MutationCount> getMutationCountsBySampleIds(String molecularProfileId, List<String> sampleIds);
+    
+    MutationCountByPosition getMutationCountByPosition(Integer entrezGeneId, Integer proteinPosStart, 
+                                                       Integer proteinPosEnd);
 }

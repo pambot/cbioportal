@@ -14,8 +14,10 @@ var sidebar = (function() {
                 profileSpec.init("y");
                 optSpec.init();
                 //reset the default value of x: default is always x copy num, y mrna
-                document.getElementById(ids.sidebar.x.profile_type).selectedIndex = "1";
-                profileSpec.updateProfileNameList("x");
+                if (document.getElementById(ids.sidebar.x.profile_type).length > 1) {
+                    document.getElementById(ids.sidebar.x.profile_type).selectedIndex = "1";
+                    profileSpec.updateProfileNameList("x");                    
+                }
             }
         //only have clincal data
         } else if ((metaData.getGeneticProfilesMeta(window.QuerySession.getQueryGenes()[0]).length === 0 || 
@@ -46,7 +48,7 @@ var sidebar = (function() {
             $.each(metaData.getGeneticProfilesMeta($("#" + ids.sidebar.x.gene).val()), function(index, obj) {
                 if($.inArray(obj.type, _type_arr) === -1 &&
                     obj.type !== "MUTATION_EXTENDED" &&
-                    obj.type !== "PROTEIN_LEVEL") //tmp: skip mutation profile
+                    obj.type !== "PROTEIN_LEVEL") //skip mutation & (old)protein profile
                     _type_arr.push(obj.type);
             });
 

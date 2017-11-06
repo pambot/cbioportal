@@ -71,6 +71,21 @@
     </filter-mapping>
 
     <filter>
+      <filter-name>APICorsFilter</filter-name>
+      <filter-class>org.apache.catalina.filters.CorsFilter</filter-class>
+      <init-param>
+        <param-name>cors.allowed.origins</param-name>
+        <!-- limit to portal server -->
+        <param-value>${session.service.origin}</param-value>
+      </init-param>
+    </filter>
+
+    <filter-mapping>
+      <filter-name>APICorsFilter</filter-name>
+      <url-pattern>/api-legacy/proxy/session-service/*</url-pattern>
+    </filter-mapping>
+
+    <filter>
         <filter-name>springSecurityFilterChain</filter-name>
         <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
     </filter>
@@ -102,6 +117,29 @@
     </filter-mapping>
 
     <filter>
+        <filter-name>SessionServiceFilter</filter-name>
+        <display-name>Session Service Filter</display-name>
+        <description>
+            This intercepts the request and puts a wrapper around it.  If
+            session_id is a request parameter, then it is used to look up
+            the stored session using the session-service REST API, and
+            the stored session request parameters are then returned by the
+            wrapper on all calls to getParameter/getParameterMap/etc.  If
+            session_id is not a request parameter, then this returns the current
+            request parameters as normal.
+        </description>
+        <filter-class>org.mskcc.cbio.portal.util.SessionServiceFilter</filter-class>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>SessionServiceFilter</filter-name>
+        <url-pattern>/index.do</url-pattern>
+        <url-pattern>/cross_cancer.do</url-pattern>
+    </filter-mapping>
+
+    <!-- make sure XssFilter runs last, so that any new parameters added
+         (for example in SessionServiceFilter) are also cleaned -->
+    <filter>
         <filter-name>XssFilter</filter-name>
         <display-name>Xss Filter</display-name>
         <description>
@@ -117,10 +155,39 @@
         <url-pattern>/*</url-pattern>
     </filter-mapping>
 
+
     <!-- servlet definitions & mappings -->
     
     <servlet>
-        <servlet-name>portal</servlet-name>
+        <servlet-name>api-legacy</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:applicationContext-weblegacy.xml</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>api-legacy</servlet-name>
+        <url-pattern>/api-legacy/*</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>url_shortener</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:applicationContext-url-shortener.xml</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>url_shortener</servlet-name>
+        <url-pattern>/api/url-shortener</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>api</servlet-name>
         <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
         <init-param>
             <param-name>contextConfigLocation</param-name>
@@ -129,8 +196,22 @@
         <load-on-startup>1</load-on-startup>
     </servlet>
     <servlet-mapping>
-        <servlet-name>portal</servlet-name>
+        <servlet-name>api</servlet-name>
         <url-pattern>/api/*</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>proxy</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:applicationContext-proxy.xml</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>proxy</servlet-name>
+        <url-pattern>/proxy/*</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -382,6 +463,15 @@
     </servlet-mapping>
 
     <servlet>
+        <servlet-name>CheckDarwinAccessServlet</servlet-name>
+        <servlet-class>org.mskcc.cbio.portal.servlet.CheckDarwinAccessServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>CheckDarwinAccessServlet</servlet-name>
+        <url-pattern>/checkDarwinAccess.do</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
         <servlet-name>MutationsJSON</servlet-name>
         <servlet-class>org.mskcc.cbio.portal.servlet.MutationsJSON</servlet-class>
     </servlet>
@@ -389,16 +479,16 @@
         <servlet-name>MutationsJSON</servlet-name>
         <url-pattern>/mutations.json</url-pattern>
     </servlet-mapping>
-    
+
     <servlet>
-        <servlet-name>CnaJSON</servlet-name>
+    <servlet-name>CnaJSON</servlet-name>
         <servlet-class>org.mskcc.cbio.portal.servlet.CnaJSON</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>CnaJSON</servlet-name>
         <url-pattern>/cna.json</url-pattern>
     </servlet-mapping>
-
+    
     <servlet>
         <servlet-name>SVGtoPDFConverter</servlet-name>
         <servlet-class>org.mskcc.cbio.portal.servlet.SvgConverter</servlet-class>
@@ -408,15 +498,6 @@
         <url-pattern>/svgtopdf.do</url-pattern>
     </servlet-mapping>
 
-    <servlet>
-        <servlet-name>ClinicalTrialsJSON</servlet-name>
-        <servlet-class>org.mskcc.cbio.portal.servlet.ClinicalTrialsJSON</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>ClinicalTrialsJSON</servlet-name>
-        <url-pattern>/clinicaltrials.json</url-pattern>
-    </servlet-mapping>
-    
     <servlet>
         <servlet-name>SimilarPatientsJSON</servlet-name>
         <servlet-class>org.mskcc.cbio.portal.servlet.SimilarPatientsJSON</servlet-class>

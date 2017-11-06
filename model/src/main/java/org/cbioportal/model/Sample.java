@@ -1,16 +1,55 @@
 package org.cbioportal.model;
 
-import java.io.Serializable;
+public class Sample extends UniqueKeyBase {
 
-public class Sample implements Serializable {
+    public enum SampleType {
+
+        PRIMARY_SOLID_TUMOR("Primary Solid Tumor"),
+        RECURRENT_SOLID_TUMOR("Recurrent Solid Tumor"),
+        PRIMARY_BLOOD_TUMOR("Primary Blood Tumor"),
+        RECURRENT_BLOOD_TUMOR("Recurrent Blood Tumor"),
+        METASTATIC("Metastatic"),
+        BLOOD_NORMAL("Blood Derived Normal"),
+        SOLID_NORMAL("Solid Tissues Normal");
+
+        private String value;
+
+        SampleType(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static SampleType fromString(String value) {
+
+            if (value != null) {
+                for (SampleType sampleType : SampleType.values()) {
+                    if (value.equalsIgnoreCase(sampleType.value)) {
+                        return sampleType;
+                    }
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String toString() {
+            return value;
+        }
+    }
 
     private Integer internalId;
     private String stableId;
     private SampleType sampleType;
     private Integer patientId;
-    private Patient patient;
+    private String patientStableId;
     private String typeOfCancerId;
-    private TypeOfCancer typeOfCancer;
+    private Patient patient;
+    private String cancerStudyIdentifier;
+    private Boolean sequenced;
+    private Boolean copyNumberSegmentPresent;
 
     public Integer getInternalId() {
         return internalId;
@@ -44,12 +83,12 @@ public class Sample implements Serializable {
         this.patientId = patientId;
     }
 
-    public Patient getPatient() {
-        return patient;
+    public String getPatientStableId() {
+        return patientStableId;
     }
 
-    public void setPatient(Patient patient) {
-        this.patient = patient;
+    public void setPatientStableId(String patientStableId) {
+        this.patientStableId = patientStableId;
     }
 
     public String getTypeOfCancerId() {
@@ -60,11 +99,35 @@ public class Sample implements Serializable {
         this.typeOfCancerId = typeOfCancerId;
     }
 
-    public TypeOfCancer getTypeOfCancer() {
-        return typeOfCancer;
+    public Patient getPatient() {
+        return patient;
     }
 
-    public void setTypeOfCancer(TypeOfCancer typeOfCancer) {
-        this.typeOfCancer = typeOfCancer;
+    public void setPatient(Patient patient) {
+        this.patient = patient;
+    }
+
+    public String getCancerStudyIdentifier() {
+        return cancerStudyIdentifier;
+    }
+
+    public void setCancerStudyIdentifier(String cancerStudyIdentifier) {
+        this.cancerStudyIdentifier = cancerStudyIdentifier;
+    }
+
+    public Boolean isSequenced() {
+        return sequenced;
+    }
+
+    public void setSequenced(Boolean sequenced) {
+        this.sequenced = sequenced;
+    }
+
+    public Boolean isCopyNumberSegmentPresent() {
+        return copyNumberSegmentPresent;
+    }
+
+    public void setCopyNumberSegmentPresent(Boolean copyNumberSegmentPresent) {
+        this.copyNumberSegmentPresent = copyNumberSegmentPresent;
     }
 }

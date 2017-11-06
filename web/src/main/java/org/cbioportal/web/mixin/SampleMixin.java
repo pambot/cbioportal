@@ -1,20 +1,24 @@
 package org.cbioportal.web.mixin;
 
-import com.fasterxml.jackson.annotation.JsonUnwrapped;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.cbioportal.model.Patient;
-import org.cbioportal.model.TypeOfCancer;
+import org.cbioportal.model.Sample;
 
 public class SampleMixin {
 
+    @JsonIgnore
     private Integer internalId;
+    @JsonProperty("sampleId")
     private String stableId;
-    private String sampleType;
+    @JsonIgnore
     private Integer patientId;
-    private String typeOfCancerId;
-
-    @JsonUnwrapped
-    private TypeOfCancer typeOfCancer;
-
-    @JsonUnwrapped
+    @JsonProperty("patientId")
+    private String patientStableId;
+    @JsonIgnore
     private Patient patient;
+    @JsonProperty("studyId")
+    private String cancerStudyIdentifier;
+    @JsonProperty("cancerTypeId")
+    private String typeOfCancerId;
 }

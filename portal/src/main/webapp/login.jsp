@@ -36,7 +36,8 @@
 <head>
 <title><%= GlobalProperties.getTitle() %>::cBioPortal Login</title>
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-<%@ page import="org.mskcc.cbio.portal.util.DynamicState" %>
+<%@ page import="java.lang.Exception" %>
+<%@ page import="org.springframework.social.security.SocialAuthenticationFilter" %>
 <%@ page import="org.mskcc.cbio.portal.servlet.QueryBuilder" %>
 <%@ page import="org.mskcc.cbio.portal.util.GlobalProperties" %>
 <%@ taglib prefix='c' uri='http://java.sun.com/jsp/jstl/core' %>
@@ -87,7 +88,7 @@
           <% if (logout_success != null) { %>
           <div class="ui-state-highlight ui-corner-all" style="padding: 0 .7em;width:90%;margin-top:50px">
             <p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>
-            <strong>You are now signed out.</strong></p>
+            <strong>You are now signed out.   It is recommended that you close your browser to complete the termination of this session.</strong></p>
           </div>
           <% } %>
 
@@ -96,9 +97,15 @@
             <p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>
             <strong>You are not authorized to access this resource.&nbsp;
 
-              <% if (authenticationMethod.equals("googleplus")) { %>
-              You have attempted to log in as <%= DynamicState.INSTANCE.getFailedUser() %>.
-              <% } %>
+              <% if (authenticationMethod.equals("googleplus")) { 
+                    Exception lastException = (Exception) request.getSession().getAttribute(SocialAuthenticationFilter.SPRING_SECURITY_LAST_EXCEPTION_KEY);
+                    if (lastException != null) {
+                        %>
+                            You have attempted to log in as <%= lastException.getMessage() %>.
+                        <%
+                    }
+                 }
+              %>
 
               <!-- removed hard-coded login contact html, instead calling GlobalProperties -->
               <%= GlobalProperties.getLoginContactHtml() %>
@@ -150,7 +157,7 @@
                 <% } else if (authenticationMethod.equals("saml")) { %>
                   <p>
                     <!-- removed the hard-coded saml registration html and calling GlobalProperties instead -->
-                    <button id="saml_login_button" type="button" class="btn btn-danger btn-lg" onclick="window.location = 'login?idp=<%= GlobalProperties.getSamlIdpMetadataEntityid() %>'" >
+                    <button id="saml_login_button" type="button" class="btn btn-danger btn-lg" onclick="window.location = 'saml/login?idp=<%= GlobalProperties.getSamlIdpMetadataEntityid() %>'" >
                     <%= GlobalProperties.getLoginSamlRegistrationHtml() %></button>
                   </p>
                 </fieldset>

@@ -32,25 +32,30 @@
 
 package org.mskcc.cbio.portal.util;
 
-import com.mysql.jdbc.StringUtils;
 import org.mskcc.cbio.portal.servlet.QueryBuilder;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.util.ResourceUtils;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.util.*;
 import java.net.URL;
-import org.springframework.security.core.userdetails.UserDetails;
 
 
 /**
  * Utility class for getting / setting global properties.
  */
+@Component
 public class GlobalProperties {
 
     public static final String HOME_DIR = "PORTAL_HOME";
@@ -124,12 +129,27 @@ public class GlobalProperties {
     public static final double[] DEFAULT_GENOMIC_OVERVIEW_CNA_CUTOFF = new double[]{0.2,1.5};
     public static final String PATIENT_VIEW_DIGITAL_SLIDE_IFRAME_URL = "digitalslidearchive.iframe.url";
     public static final String PATIENT_VIEW_DIGITAL_SLIDE_META_URL = "digitalslidearchive.meta.url";
-    public static final String PATIENT_VIEW_TCGA_PATH_REPORT_URL = "tcga_path_report.url";
-    public static final String ONCOKB_URL = "oncokb.url";
+
+    public static final String PATIENT_VIEW_MDACC_HEATMAP_META_URL = "mdacc.heatmap.meta.url";
+    public static final String PATIENT_VIEW_MDACC_HEATMAP_URL = "mdacc.heatmap.patient.url";
+
+    public static final String STUDY_VIEW_MDACC_HEATMAP_URL = "mdacc.heatmap.study.url";
+    public static final String STUDY_VIEW_MDACC_HEATMAP_META_URL = "mdacc.heatmap.study.meta.url";
+
+    public static final String ONCOKB_API_URL = "oncokb.api.url";
+    public static final String ONCOKB_PUBLIC_API_URL = "oncokb.public_api.url";
+    public static final String SHOW_ONCOKB = "show.oncokb";
+
+    private static String sessionServiceURL;
+    @Value("${session.service.url:}") // default is empty string
+    public void setSessionServiceURL(String property) { sessionServiceURL = property; }
+
+    private static String frontendConfig;
+    @Value("${frontend.config:}") // default is empty string
+    public void setFrontendConfig(String property) { frontendConfig = property; }
 
     // properties for showing the right logo in the header_bar and default logo
     public static final String SKIN_RIGHT_LOGO = "skin.right_logo";
-    public static final String DEFAULT_SKIN_RIGHT_LOGO = "images/mskcc_logo_3d_grey.jpg";
 
     // properties for hiding/showing tabs in the header navigation bar
     public static final String SKIN_SHOW_WEB_API_TAB = "skin.show_web_api_tab";
@@ -138,16 +158,10 @@ public class GlobalProperties {
     public static final String SKIN_SHOW_FAQS_TAB = "skin.show_faqs_tab";
     public static final String SKIN_SHOW_TOOLS_TAB = "skin.show_tools_tab";
     public static final String SKIN_SHOW_ABOUT_TAB = "skin.show_about_tab";
-    public static final String SKIN_SHOW_VISUALIZE_YOUR_DATA_TAB = "skin.show_visualize_your_data_tab";
 
     // property for setting the news blurb in the right column
     public static final String SKIN_RIGHT_NAV_WHATS_NEW_BLURB = "skin.right_nav.whats_new_blurb";
-    public static final String DEFAULT_SKIN_WHATS_NEW_BLURB = 
-            "<form action=\"http://groups.google.com/group/cbioportal-news/boxsubscribe\"> &nbsp;&nbsp;&nbsp;&nbsp;" +
-            "<b>Sign up for low-volume email news alerts:</b></br> &nbsp;&nbsp;&nbsp;&nbsp;<input type=\"text\" " +
-            "name=\"email\" title=\"Subscribe to mailing list\"> <input type=\"submit\" name=\"sub\" value=\"Subscribe\"> " +
-            "</form> &nbsp;&nbsp;&nbsp;&nbsp;<b>Or follow us <a href=\"http://www.twitter.com/cbioportal\">" +
-            "<i>@cbioportal</i></a> on Twitter</b>\n";
+    public static final String DEFAULT_SKIN_WHATS_NEW_BLURB = ""; // default is in cbioportal-frontend repo
 
     // footer
     public static final String SKIN_FOOTER = "skin.footer";
@@ -160,16 +174,14 @@ public class GlobalProperties {
             "error, please contact us at <a style=\"color:#FF0000\" href=\"mailto:cbioportal-access@cbio.mskcc.org\">" +
             "cbioportal-access@cbio.mskcc.org</a>";
 
-    // properties for hiding/showing tabs in the patient view
-    public static final String SKIN_PATIENT_VIEW_SHOW_CLINICAL_TRIALS_TAB="skin.patient_view.show_clinical_trials_tab";
-    public static final String SKIN_PATIENT_VIEW_SHOW_DRUGS_TAB="skin.patient_view.show_drugs_tab";
-
     // property for setting the saml registration html
     public static final String SKIN_LOGIN_SAML_REGISTRATION_HTML = "skin.login.saml.registration_html";
     public static final String DEFAULT_SKIN_LOGIN_SAML_REGISTRATION_HTML = "Sign in with MSK";
 
     // property for the saml entityid
     public static final String SAML_IDP_METADATA_ENTITYID="saml.idp.metadata.entityid";
+    // property for whether the SAML logout should be local (at SP level) or global (at IDP level). Default: false (global)
+    public static final String SAML_IS_LOGOUT_LOCAL="saml.logout.local";
 
     // property for the custom header tabs
     public static final String SKIN_CUSTOM_HEADER_TABS="skin.custom_header_tabs";
@@ -186,11 +198,14 @@ public class GlobalProperties {
     public static final String SKIN_NEWS="skin.documentation.news";
     public static final String DEFAULT_SKIN_NEWS="News.md";
 
-    public static final String SKIN_EXAMPLES_RIGHT_COLUMN="skin.examples_right_column";
-    public static final String DEFAULT_SKIN_EXAMPLES_RIGHT_COLUMN="../../../content/examples.html";
+    public static final String SKIN_EXAMPLES_RIGHT_COLUMN_HTML="skin.examples_right_column_html";
     
     public static final String ALWAYS_SHOW_STUDY_GROUP="always_show_study_group";
 
+    // property for query component
+    public static final String SKIN_QUERY_MAX_TREE_DEPTH="skin.query.max_tree_depth";
+    public static final Number DEFAULT_QUERY_MAX_TREE_DEPTH=3;
+    
     // property for text shown at the right side of the Select Patient/Case set, which
     // links to the study view
     public static final String SKIN_STUDY_VIEW_LINK_TEXT="skin.study_view.link_text";
@@ -204,13 +219,83 @@ public class GlobalProperties {
     public static final String RECACHE_STUDY_AFTER_UPDATE = "recache_study_after_update";
     
     public static final String DB_VERSION = "db.version";
+    private static boolean suppressSchemaVersionMismatchErrors;
+    @Value("${db.suppress_schema_version_mismatch_errors:false}") // default is false
+    public void setSuppressSchemaVersionMismatchErrors(String property) { suppressSchemaVersionMismatchErrors = Boolean.parseBoolean(property); }
     
     public static final String DARWIN_AUTH_URL = "darwin.auth_url";
     public static final String DARWIN_RESPONSE_URL = "darwin.response_url";
-    public static final String DARWIN_AUTHORITY = "darwin.authority";
     public static final String CIS_USER = "cis.user";
     public static final String DISABLED_TABS = "disabled_tabs";
+    public static final String BITLY_USER = "bitly.user";
+    public static final String DARWIN_REGEX = "darwin.regex";
     
+    public static final String PRIORITY_STUDIES = "priority_studies";
+    public static final String SPECIES = "species";
+    public static final String DEFAULT_SPECIES = "human";
+    public static final String NCBI_BUILD = "ncbi.build";
+    public static final String DEFAULT_NCBI_BUILD = "37";
+    public static final String UCSC_BUILD = "ucsc.build";
+    public static final String DEFAULT_UCSC_BUILD = "hg19";
+
+    public static final String ONCOPRINT_DEFAULTVIEW = "oncoprint.defaultview";
+    
+    public static final String SETSOFGENES_LOCATION = "querypage.setsofgenes.location";
+
+    private static boolean showCivic;
+    @Value("${show.civic:false}") // default is false
+    public void setShowCivic(String property) { showCivic = Boolean.parseBoolean(property); }
+
+    private static boolean showGenomeNexus;
+    @Value("${show.genomenexus:true}") // default is true
+    public void setShowGenomeNexus(String property) { showGenomeNexus = Boolean.parseBoolean(property); }
+
+	/*
+     * Trim whitespace of url and append / if it does not exist. Return empty
+     * string otherwise.
+     */
+	public static String parseUrl(String url)
+    {
+		String rv;
+
+        if (!url.isEmpty()) {
+            rv = url.trim();
+
+            if (!rv.endsWith("/")) {
+                rv += "/";
+            }
+        } else {
+			rv = "";
+		}
+
+		return rv;
+	}
+    
+    public static final String BINARY_CUSTOM_DRIVER_ANNOTATION_MENU_LABEL = "oncoprint.custom_driver_annotation.binary.menu_label";
+    public static final String TIERS_CUSTOM_DRIVER_ANNOTATION_MENU_LABEL = "oncoprint.custom_driver_annotation.tiers.menu_label";
+    public static final String ENABLE_DRIVER_ANNOTATIONS = "oncoprint.custom_driver_annotation.default";
+    public static final String ENABLE_TIERS = "oncoprint.custom_driver_tiers_annotation.default";
+    public static final String ENABLE_ONCOKB_AND_HOTSPOTS_ANNOTATIONS = "oncoprint.oncokb_hotspots.default";
+    public static final String HIDE_PASSENGER_MUTATIONS = "oncoprint.hide_passenger.default";
+
+	private static String civicUrl;
+	@Value("${civic.url:https://civic.genome.wustl.edu/api/}") // default
+	public void setCivicUrl(String property) { civicUrl = parseUrl(property); }
+
+	private static String genomeNexusApiUrl;
+	@Value("${genomenexus.url:genomenexus.org}") // default
+	public void setGenomeNexusApiUrl(String property) { genomeNexusApiUrl = parseUrl(property); }
+
+    private static String frontendUrl;
+    @Value("${frontend.url:}") // default is empty string
+    public void setFrontendUrl(String property) { frontendUrl = parseUrl(property); }
+
+    /* read frontendUrl from this file at runtime (TODO: read from URL),
+     * overrides frontend.url */
+    private static String frontendUrlRuntime;
+    @Value("${frontend.url.runtime:}") 
+    public void setFrontendUrlRuntime(String property) { frontendUrlRuntime = property; }
+
     private static Log LOG = LogFactory.getLog(GlobalProperties.class);
     private static Properties properties = initializeProperties();
 
@@ -391,11 +476,18 @@ public class GlobalProperties {
         return markdownFlag == null || Boolean.parseBoolean(markdownFlag);
     }
 
+    //get max tree depth
+    public static Number getMaxTreeDepth()
+    {
+        String maxTreeDepth = properties.getProperty(SKIN_QUERY_MAX_TREE_DEPTH);
+        return (maxTreeDepth == null) ? DEFAULT_QUERY_MAX_TREE_DEPTH : Integer.parseInt(maxTreeDepth);
+    }
+
     // get custom Example Queries for the right column html or the default
     public static String getExamplesRightColumnHtml()
     {
-        String examplesRightColumnHtml = properties.getProperty(SKIN_EXAMPLES_RIGHT_COLUMN);
-        return (examplesRightColumnHtml == null) ? DEFAULT_SKIN_EXAMPLES_RIGHT_COLUMN : "../../../content/"+examplesRightColumnHtml;
+        String examplesRightColumnHtml = properties.getProperty(SKIN_EXAMPLES_RIGHT_COLUMN_HTML);
+        return examplesRightColumnHtml == null? "": examplesRightColumnHtml;
     }
 
     private static String getContentString(String contentString){
@@ -419,6 +511,13 @@ public class GlobalProperties {
     {
         return getProperty(SAML_IDP_METADATA_ENTITYID);
     }
+    
+    // returns whether the SAML logout should be local (at SP level) or global (at IDP level). Default: false (global)
+    public static String getSamlIsLogoutLocal()
+    {
+    	return properties.getProperty(SAML_IS_LOGOUT_LOCAL, "false");
+    }
+    
     public static String getTagLineImage()
     {
         String tagLineImage = properties.getProperty(SKIN_TAG_LINE_IMAGE);
@@ -429,7 +528,7 @@ public class GlobalProperties {
     public static String getRightLogo()
     {
         String rightLogo = properties.getProperty(SKIN_RIGHT_LOGO);
-        return (rightLogo == null) ? DEFAULT_SKIN_RIGHT_LOGO : "images/" + rightLogo;
+        return (rightLogo == null || "".equals(rightLogo)) ? "" : "images/" + rightLogo;
     }
 
     // function for retrieving the footer text
@@ -529,24 +628,6 @@ public class GlobalProperties {
         String showFlag = properties.getProperty(SKIN_SHOW_ABOUT_TAB);
         return showFlag == null || Boolean.parseBoolean(showFlag);
     }
-    // show or hide the visualize your data tab in header navigation bar
-    public static boolean showVisualizeYourDataTab()
-    {
-        String showFlag = properties.getProperty(SKIN_SHOW_VISUALIZE_YOUR_DATA_TAB);
-        return showFlag == null || Boolean.parseBoolean(showFlag);
-    }
-    // show the clinical trials tab in the patient view
-    public static boolean showClinicalTrialsTab()
-    {
-        String showFlag = properties.getProperty(SKIN_PATIENT_VIEW_SHOW_CLINICAL_TRIALS_TAB);
-        return showFlag != null && Boolean.parseBoolean(showFlag);
-    }
-    // show the drugs tab in the patient view
-    public static boolean showDrugsTab()
-    {
-        String showFlag = properties.getProperty(SKIN_PATIENT_VIEW_SHOW_DRUGS_TAB);
-        return showFlag != null && Boolean.parseBoolean(showFlag);
-    }
     // get the text for the What's New in the right navigation bar
     public static String getRightNavWhatsNewBlurb(){
         String whatsNewBlurb = properties.getProperty(SKIN_RIGHT_NAV_WHATS_NEW_BLURB);
@@ -594,18 +675,32 @@ public class GlobalProperties {
         String dataSetsFooter = properties.getProperty(SKIN_DATASETS_FOOTER);
         return dataSetsFooter == null ? DEFAULT_SKIN_DATASETS_FOOTER : dataSetsFooter;
     }
+    
+    public static String getSpecies(){
+    	String species = properties.getProperty(SPECIES);
+    	return species == null ? DEFAULT_SPECIES : species;
+    	}
+
+    public static String getNCBIBuild(){
+    	String NCBIBuild = properties.getProperty(NCBI_BUILD);
+    	return NCBIBuild == null ? DEFAULT_NCBI_BUILD : NCBIBuild;
+    	}
+   
+    public static String getGenomicBuild(){
+    	String genomicBuild = properties.getProperty(UCSC_BUILD);
+    	return genomicBuild == null ? DEFAULT_UCSC_BUILD : genomicBuild;
+    	}
 
     public static String getLinkToPatientView(String caseId, String cancerStudyId)
     {
-        return "case.do?" + QueryBuilder.CANCER_STUDY_ID + "=" + cancerStudyId
-                 //+ "&"+ org.mskcc.cbio.portal.servlet.PatientView.PATIENT_ID + "=" + caseId;
-                 + "&"+ org.mskcc.cbio.portal.servlet.PatientView.SAMPLE_ID + "=" + caseId;
+        return "case.do#/patient?caseId=" + caseId
+                 + "&studyId=" + cancerStudyId;
     }
 
     public static String getLinkToSampleView(String caseId, String cancerStudyId)
     {
-        return "case.do?" + QueryBuilder.CANCER_STUDY_ID + "=" + cancerStudyId
-                 + "&"+ org.mskcc.cbio.portal.servlet.PatientView.SAMPLE_ID + "=" + caseId;
+        return "case.do#/patient?sampleId=" + caseId
+                 + "&studyId=" + cancerStudyId;
     }
 
     public static String getLinkToCancerStudyView(String cancerStudyId)
@@ -637,21 +732,30 @@ public class GlobalProperties {
         return url+caseId;
     }
 
-    public static String[] getTCGAPathReportUrl(String typeOfCancer)
+    public static String getStudyHeatmapMetaUrl()
     {
-        String url = GlobalProperties.getProperty(PATIENT_VIEW_TCGA_PATH_REPORT_URL);
-        if (url == null) {
-            return null;
-        }
-        
-        if (typeOfCancer.equalsIgnoreCase("coadread")) {
-            return new String[] {
-                url.replace("{cancer.type}", "coad"),
-                url.replace("{cancer.type}", "read")
-            };
-        }
-        
-        return new String[] {url.replace("{cancer.type}", typeOfCancer)};
+        String url = properties.getProperty(STUDY_VIEW_MDACC_HEATMAP_META_URL);
+        return url;
+    }
+
+    public static String getStudyHeatmapViewerUrl()
+    {
+        String url = properties.getProperty(STUDY_VIEW_MDACC_HEATMAP_URL);
+        return url;
+    }
+
+    public static String getPatientHeatmapMetaUrl(String caseId)
+    {
+        String url = properties.getProperty(PATIENT_VIEW_MDACC_HEATMAP_META_URL);
+        if (url == null || url.length() == 0) return null;
+        return url + caseId;
+    }
+
+    public static String getPatientHeatmapViewerUrl(String caseId)
+    {
+        String url = properties.getProperty(PATIENT_VIEW_MDACC_HEATMAP_URL);
+        if (url == null || url.length() == 0) return null;
+        return url + caseId;
     }
 
     // function for getting the custom tabs for the header
@@ -663,26 +767,81 @@ public class GlobalProperties {
         }
         return null;
     }
-    
-    public static String getOncoKBUrl()
+   
+    public static String getSessionServiceUrl()
     {
-        String oncokbUrl = properties.getProperty(ONCOKB_URL);
+        return sessionServiceURL;
+    }
+
+    public static String getOncoKBPublicApiUrl()
+    {
+        String oncokbApiUrl = properties.getProperty(ONCOKB_PUBLIC_API_URL);
+        String showOncokb = properties.getProperty(SHOW_ONCOKB);
+        
+        if(showOncokb == null || showOncokb.isEmpty()) {
+                    showOncokb = "true";
+        }
+        
+        // This only applies if there is no oncokb.api.url property in the portal.properties file.
+        // Empty string should be used if you want to disable the OncoKB annotation.
+        if(oncokbApiUrl == null || oncokbApiUrl.isEmpty()) {
+            oncokbApiUrl = "oncokb.org/api/v1";
+        }
+        
+        if(showOncokb.equals("true")) {
+           return oncokbApiUrl;
+        } else {
+           return "";
+        }
+        
+    }
+ 
+    public static String getOncoKBApiUrl()
+    {
+        String oncokbApiUrl = properties.getProperty(ONCOKB_API_URL);
+        String showOncokb = properties.getProperty(SHOW_ONCOKB);
+
+        if(showOncokb == null || showOncokb.isEmpty()) {
+            showOncokb = "true";
+        }
+        // This only applies if there is no oncokb.api.url property in the portal.properties file.
+        // Empty string should be used if you want to disable the OncoKB annotation.
+        if(oncokbApiUrl == null) {
+            oncokbApiUrl = "http://oncokb.org/legacy-api/";
+        }
 
         //Test connection of OncoKB website.
-        if(oncokbUrl != null && !oncokbUrl.isEmpty()) {
+        if(!oncokbApiUrl.isEmpty() && showOncokb.equals("true")) {
             try {
-                URL url = new URL(oncokbUrl+"access");
+                URL url = new URL(oncokbApiUrl+"access");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 if(conn.getResponseCode() != 200) {
-                    oncokbUrl = "";
+                    oncokbApiUrl = "";
                 }
                 conn.disconnect();
-                return oncokbUrl;
+                return oncokbApiUrl;
             } catch (Exception e) {
                 return "";
             }
         }
         return "";
+    }
+
+    public static String getCivicUrl() {
+        return civicUrl;
+    }
+
+    public static String getGenomeNexusApiUrl() {
+        return genomeNexusApiUrl;
+    }
+
+    public static boolean showOncoKB() {
+        String showOncokb = properties.getProperty(SHOW_ONCOKB);
+        if (showOncokb==null || showOncokb.isEmpty()) {
+            return true; // show oncoKB by default
+        } else {
+            return Boolean.parseBoolean(showOncokb);
+        }
     }
 
     public static boolean showHotspot() {
@@ -694,24 +853,36 @@ public class GlobalProperties {
         if(!hotspot.isEmpty()) {
             return Boolean.parseBoolean(hotspot);
         }else{
-            return false;
+            return true;
         }
     }
 
-    public static boolean filterGroupsByAppName() {
-        String filterGroupsByNameFlag = properties.getProperty(FILTER_GROUPS_BY_APPNAME);
-        return filterGroupsByNameFlag == null || Boolean.parseBoolean(filterGroupsByNameFlag);
+    public static boolean showCivic() {
+        return showCivic;
     }
-    
-    public static String getAlwaysShowStudyGroup() {
-        String group = properties.getProperty(ALWAYS_SHOW_STUDY_GROUP);
-        if (group!=null && group.trim().isEmpty()) {
-            return null;
+
+    public static boolean showGenomeNexus() {
+        return showGenomeNexus;
+    }
+
+    public static String getFrontendUrl() {
+        if (frontendUrlRuntime.length() > 0) {
+            try {
+                String url = parseUrl(new String(Files.readAllBytes(Paths.get(frontendUrlRuntime)), StandardCharsets.UTF_8).replaceAll("[\\r\\n]+", ""));
+                if (LOG.isInfoEnabled()) {
+                    LOG.info("Using frontend from " + frontendUrlRuntime + ": " + url);
+                }
+                return url;
+            } catch (IOException e) {
+                // error reading file, use existing frontendUrl
+                if (LOG.isErrorEnabled()) {
+                    LOG.error("Can't read frontend.url.runtime: " + frontendUrlRuntime);
+                }
+            }
         }
-        
-        return group;
+        return frontendUrl;
     }
-    
+
     public static boolean showMyCancerGenomeUrl()
     {
         String show = properties.getProperty(MYCANCERGENOME_SHOW);
@@ -731,6 +902,15 @@ public class GlobalProperties {
         return Boolean.parseBoolean(recacheStudyAfterUpdate);
     }
     
+    public static String getBitlyUser() {
+        String bitlyUser = properties.getProperty(BITLY_USER);
+        if (bitlyUser == null || bitlyUser.trim().equals(""))
+        {
+            return null;
+        }
+        return bitlyUser;
+    }
+    
     public static String getDbVersion() {
         String version = properties.getProperty(DB_VERSION);
         if (version == null)
@@ -740,44 +920,68 @@ public class GlobalProperties {
         return version;
     }
     
+    public static boolean isSuppressSchemaVersionMismatchErrors() {
+        return suppressSchemaVersionMismatchErrors;
+    }
+
     public static String getDarwinAuthCheckUrl() {
         String darwinAuthUrl = "";
-        try{
-            darwinAuthUrl = properties.getProperty(DARWIN_AUTH_URL).trim();            
-        }
-        catch (NullPointerException e){}
-        
+        if (properties.containsKey(DARWIN_AUTH_URL)) {
+            try{
+                darwinAuthUrl = properties.getProperty(DARWIN_AUTH_URL);
+            }
+            catch (NullPointerException e){}
+        }        
         return darwinAuthUrl;
     }
     
     public static String getDarwinResponseUrl() {
         String darwinResponseUrl = "";
-        try{
-            darwinResponseUrl = properties.getProperty(DARWIN_RESPONSE_URL).trim();
+        if (properties.containsKey(DARWIN_RESPONSE_URL)) {
+            try{
+                darwinResponseUrl = properties.getProperty(DARWIN_RESPONSE_URL);
+            }
+            catch (NullPointerException e) {}
         }
-        catch (NullPointerException e) {}
-        
         return darwinResponseUrl;
     }
     
-    public static String getDarwinAuthority() { 
-        String darwinAuthority = "";
-        try{
-            darwinAuthority = properties.getProperty(DARWIN_AUTHORITY).trim();
-        }
-        catch (NullPointerException e) {}
-        
-        return darwinAuthority;
+    public static List<String[]> getPriorityStudies() {
+	    List<String[]> priorityStudiesObject = new LinkedList<>();
+	    try {
+		    String priorityStudies = properties.getProperty(PRIORITY_STUDIES).trim();
+		    for (String priorityStudyCategory: priorityStudies.split(";")) {
+			    String[] elements = priorityStudyCategory.split("[#,]");
+			    elements = Arrays.stream(elements).filter(s -> s.length() > 0).toArray(String[]::new);
+			    if (elements.length > 1) {
+				    priorityStudiesObject.add(elements);
+			    }
+		    }
+	    } catch (NullPointerException e) {}
+	    return priorityStudiesObject;
     }
     
     public static String getCisUser() {
         String cisUser = "";
-        try{
-            cisUser = properties.getProperty(CIS_USER).trim();
+        if (properties.containsKey(CIS_USER)) {
+            try{
+                cisUser = properties.getProperty(CIS_USER);
+            }
+            catch (NullPointerException e) {}            
         }
-        catch (NullPointerException e) {}
-        
         return cisUser;         
+    }
+    
+    
+    public static String getDarwinRegex() {
+        String darwinRegex = "";
+        if (properties.containsKey(DARWIN_REGEX)) {
+            try {
+                darwinRegex = properties.getProperty(DARWIN_REGEX);
+            }
+            catch (NullPointerException e) {}   
+        }
+        return darwinRegex;
     }
     
     public static List<String> getDisabledTabs() {
@@ -790,9 +994,108 @@ public class GlobalProperties {
         String[] tabs = disabledTabs.split("\\|");
         return (tabs.length > 0 && disabledTabs.length() > 0) ? Arrays.asList(tabs) : new ArrayList<String>();
     }
-
+    
+    public static String getDefaultOncoprintView() {
+        String defaultOncoprintView = properties.getProperty(ONCOPRINT_DEFAULTVIEW);
+        if (defaultOncoprintView == null || defaultOncoprintView.isEmpty()) {
+            return "patient";
+        }
+        return defaultOncoprintView.trim();
+    }
+    
+    public static boolean enableDriverAnnotations() {
+        String enableDriverAnnotations = properties.getProperty(ENABLE_DRIVER_ANNOTATIONS, "true");
+        if (!showBinaryCustomDriverAnnotation()) {
+            return false;  // do not enable driver annotations by default
+        }
+        return Boolean.parseBoolean(enableDriverAnnotations);
+    }
+    
+    public static boolean enableTiers() {
+        String enableTiers = properties.getProperty(ENABLE_TIERS, "true");
+        if (!showTiersCustomDriverAnnotation()) {
+            return false;  // do not enable driver annotations by default
+        }
+        return Boolean.parseBoolean(enableTiers);
+    }
+    
+    public static String enableOncoKBandHotspots() {
+        String enableOncoKBandHotspots = properties.getProperty(ENABLE_ONCOKB_AND_HOTSPOTS_ANNOTATIONS, "true").trim();
+        if (enableOncoKBandHotspots.equalsIgnoreCase("custom")) {
+            return "custom";
+        } else if (enableOncoKBandHotspots.equalsIgnoreCase("false")) {
+            return "false";
+        }
+        return "true";
+    }
+    
+    public static String getBinaryCustomDriverAnnotationMenuLabel()
+    {
+        return properties.getProperty(BINARY_CUSTOM_DRIVER_ANNOTATION_MENU_LABEL);
+    }
+    
+    public static String getTiersCustomDriverAnnotationMenuLabel()
+    {
+        return properties.getProperty(TIERS_CUSTOM_DRIVER_ANNOTATION_MENU_LABEL);
+    }
+    
     public static void main(String[] args)
     {
         System.out.println(getAppVersion());
+    }
+    
+    public static boolean showBinaryCustomDriverAnnotation() {
+        if (getBinaryCustomDriverAnnotationMenuLabel()==null || getBinaryCustomDriverAnnotationMenuLabel().isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+    
+    public static boolean showTiersCustomDriverAnnotation() {
+	if (getTiersCustomDriverAnnotationMenuLabel()==null || getTiersCustomDriverAnnotationMenuLabel().isEmpty()) {
+	    return false;
+	}
+        return true;
+    }
+    
+    public static boolean hidePassengerMutations() {
+	String hidePassenger = properties.getProperty(HIDE_PASSENGER_MUTATIONS, "false");
+	return Boolean.parseBoolean(hidePassenger);
+    }
+
+    public static String readFile(String fileName)
+    {
+        String result = new String();
+
+        if (fileName == null) {
+            result = null;
+        } else {
+            try {
+                BufferedReader br = new BufferedReader(new FileReader(ResourceUtils.getFile(fileName)));
+                for (String line = br.readLine(); line != null; line = br.readLine()) {
+                    line = line.trim();
+                    result = result + line;
+                }
+                br.close();
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException("File not found: ", e);
+            } catch (IOException e) {
+                throw new RuntimeException("Line not found: ", e);
+            }
+        }
+        return result;
+    }
+
+    public static String getFrontendConfig() {
+        if (frontendConfig.length() > 0) {
+            return readFile(frontendConfig);
+        } else {
+            return null;
+        }
+    }
+    
+    public static String getQuerySetsOfGenes() {
+        String fileName = properties.getProperty(SETSOFGENES_LOCATION, null);
+        return readFile(fileName);
     }
 }

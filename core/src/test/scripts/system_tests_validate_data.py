@@ -31,11 +31,16 @@ class ValidateDataSystemTester(unittest.TestCase):
     '''
 
     def setUp(self):
-        """not much to do here"""
-        
+        def dummy_get_pom_path():
+            return "test_data/test.xml"
+        self.orig_get_pom_path = validateData.get_pom_path
+        validateData.get_pom_path = dummy_get_pom_path
 
     def tearDown(self):
         """Close logging handlers after running validator and remove tmpdir."""
+        # restore original function
+        validateData.get_pom_path = self.orig_get_pom_path
+
         # get the logger used in validateData.main_validate()
         validator_logger = logging.getLogger(validateData.__name__)
         # flush and close all handlers of this logger
@@ -69,7 +74,7 @@ class ValidateDataSystemTester(unittest.TestCase):
     def test_exit_status_success(self):
         '''study 0 : no errors, expected exit_status = 0.
 
-        If there are errors, the script should return 
+        If there are errors, the script should return
                 0: 'succeeded',
                 1: 'failed',
                 2: 'not performed as problems occurred',
@@ -78,7 +83,7 @@ class ValidateDataSystemTester(unittest.TestCase):
 
         # build up the argument list
         print "===study 0"
-        args = ['--study_directory','test_data/study_es_0/', 
+        args = ['--study_directory','test_data/study_es_0/',
                 '--portal_info_dir', PORTAL_INFO_DIR, '-v']
         # execute main function with arguments provided as if from sys.argv
         args = validateData.interface(args)
@@ -89,7 +94,7 @@ class ValidateDataSystemTester(unittest.TestCase):
         '''study 1 : errors, expected exit_status = 1.'''
         #Build up arguments and run
         print "===study 1"
-        args = ['--study_directory','test_data/study_es_1/', 
+        args = ['--study_directory','test_data/study_es_1/',
                 '--portal_info_dir', PORTAL_INFO_DIR, '-v']
         args = validateData.interface(args)
         # Execute main function with arguments provided through sys.argv
@@ -100,7 +105,7 @@ class ValidateDataSystemTester(unittest.TestCase):
         '''test to fail: give wrong hugo file, or let a meta file point to a non-existing data file, expected exit_status = 2.'''
         #Build up arguments and run
         print "===study invalid"
-        args = ['--study_directory','test_data/study_es_invalid/', 
+        args = ['--study_directory','test_data/study_es_invalid/',
                 '--portal_info_dir', PORTAL_INFO_DIR, '-v']
         args = validateData.interface(args)
         # Execute main function with arguments provided through sys.argv
@@ -112,7 +117,7 @@ class ValidateDataSystemTester(unittest.TestCase):
         # data_filename: test
         #Build up arguments and run
         print "===study 3"
-        args = ['--study_directory','test_data/study_es_3/', 
+        args = ['--study_directory','test_data/study_es_3/',
                 '--portal_info_dir', PORTAL_INFO_DIR, '-v']
         args = validateData.interface(args)
         # Execute main function with arguments provided through sys.argv
@@ -125,7 +130,7 @@ class ValidateDataSystemTester(unittest.TestCase):
         '''
         #Build up arguments and run
         out_file_name = 'test_data/study_es_0/result_report.html~'
-        args = ['--study_directory','test_data/study_es_0/', 
+        args = ['--study_directory','test_data/study_es_0/',
                 '--portal_info_dir', PORTAL_INFO_DIR, '-v',
                 '--html_table', out_file_name]
         args = validateData.interface(args)
@@ -134,24 +139,6 @@ class ValidateDataSystemTester(unittest.TestCase):
         self.assertEquals(0, exit_status)
         self.assertFileGenerated(out_file_name,
                                  'test_data/study_es_0/result_report.html')
-
-    def test_errorline_output(self):
-        '''Test if error file is generated when '--error_file' is given.'''
-        out_file_name = 'test_data/study_maf_test/error_file.txt~'
-        # build up arguments and run
-        argv = ['--study_directory','test_data/study_maf_test/',
-                '--portal_info_dir', PORTAL_INFO_DIR,
-                '--error_file', out_file_name]
-        parsed_args = validateData.interface(argv)
-        exit_status = validateData.main_validate(parsed_args)
-        # flush logging handlers used in validateData
-        validator_logger = logging.getLogger(validateData.__name__)
-        for logging_handler in validator_logger.handlers:
-            logging_handler.flush()
-        # assert that the results are as expected
-        self.assertEquals(1, exit_status)
-        self.assertFileGenerated(out_file_name,
-                                 'test_data/study_maf_test/error_file.txt')
 
     def test_portal_mismatch(self):
         '''Test if validation fails when data contradicts the portal.'''
@@ -191,7 +178,7 @@ class ValidateDataSystemTester(unittest.TestCase):
         # build the argument list
         out_file_name = 'test_data/study_wr_clin/result_report.html~'
         print '==test_problem_in_clinical=='
-        args = ['--study_directory','test_data/study_wr_clin/', 
+        args = ['--study_directory','test_data/study_wr_clin/',
                 '--portal_info_dir', PORTAL_INFO_DIR, '-v',
                 '--html_table', out_file_name]
         # execute main function with arguments provided as if from sys.argv
@@ -202,27 +189,38 @@ class ValidateDataSystemTester(unittest.TestCase):
         self.assertFileGenerated(out_file_name,
                                  'test_data/study_wr_clin/result_report.html')
 
-    def test_normal_samples_list_in_maf(self):
+    def test_various_issues(self):
+        '''Test if output is generated for a mix of errors and warnings.
+
+        This includes HTML ouput, the error line file and the exit status.
         '''
-        For mutations MAF files there is a column called "Matched_Norm_Sample_Barcode". 
-        In the respective meta file it is possible to give a list of sample codes against which this 
-        column "Matched_Norm_Sample_Barcode" is validated. Here we test if this 
-        validation works well.
-        '''
-        #Build up arguments and run
-        out_file_name = 'test_data/study_maf_test/result_report.html~'
-        print '==test_normal_samples_list_in_maf=='
-        args = ['--study_directory','test_data/study_maf_test/', 
+        # build the argument list
+        html_file_name = 'test_data/study_various_issues/result_report.html~'
+        error_file_name = 'test_data/study_various_issues/error_file.txt~'
+        args = ['--study_directory','test_data/study_various_issues/',
                 '--portal_info_dir', PORTAL_INFO_DIR, '-v',
-                '--html_table', out_file_name]
+                '--html_table', html_file_name,
+                '--error_file', error_file_name]
         args = validateData.interface(args)
-        # Execute main function with arguments provided through sys.argv
+        # execute main function with arguments provided through sys.argv
         exit_status = validateData.main_validate(args)
-        # should fail because of errors with invalid Matched_Norm_Sample_Barcode values
+        # flush logging handlers used in validateData
+        validator_logger = logging.getLogger(validateData.__name__)
+        for logging_handler in validator_logger.handlers:
+            logging_handler.flush()
+        # should fail because of various errors in addition to warnings
         self.assertEquals(1, exit_status)
-        self.assertFileGenerated(out_file_name,
-                                 'test_data/study_maf_test/result_report.html')
-        
+        # In MAF files (mutation data) there is a column called
+        # "Matched_Norm_Sample_Barcode". The respective metadata file supports
+        # giving a list of sample codes against which this column is validated.
+        # This and other errors are expected in these output files.
+        self.assertFileGenerated(
+                html_file_name,
+                'test_data/study_various_issues/result_report.html')
+        self.assertFileGenerated(
+                error_file_name,
+                'test_data/study_various_issues/error_file.txt')
+
     def test_files_with_quotes(self):
         '''
         Tests the scenario where data files contain quotes. This should give errors.
@@ -230,7 +228,7 @@ class ValidateDataSystemTester(unittest.TestCase):
         #Build up arguments and run
         out_file_name = 'test_data/study_quotes/result_report.html~'
         print '==test_files_with_quotes=='
-        args = ['--study_directory','test_data/study_quotes/', 
+        args = ['--study_directory','test_data/study_quotes/',
                 '--portal_info_dir', PORTAL_INFO_DIR, '-v',
                 '--html_table', out_file_name]
         args = validateData.interface(args)
@@ -239,7 +237,7 @@ class ValidateDataSystemTester(unittest.TestCase):
         # should fail because of errors with quotes
         self.assertEquals(1, exit_status)
         self.assertFileGenerated(out_file_name,
-                                 'test_data/study_quotes/result_report.html')        
+                                 'test_data/study_quotes/result_report.html')
 
 
 if __name__ == '__main__':

@@ -2,111 +2,114 @@ package org.cbioportal.persistence.mybatis;
 
 import org.cbioportal.model.Mutation;
 import org.cbioportal.model.MutationCount;
+import org.cbioportal.model.MutationCountByPosition;
+import org.cbioportal.model.MutationCountByGene;
+import org.cbioportal.model.meta.MutationMeta;
 import org.cbioportal.persistence.MutationRepository;
-import org.cbioportal.persistence.dto.AltCount;
-import org.cbioportal.persistence.dto.KeywordSampleCount;
-import org.cbioportal.persistence.dto.MutatedGeneSampleCount;
-import org.cbioportal.persistence.dto.SignificantlyMutatedGene;
+import org.cbioportal.persistence.mybatis.util.OffsetCalculator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Repository
 public class MutationMyBatisRepository implements MutationRepository {
 
     @Autowired
-    MutationMapper mutationMapper;
+    private MutationMapper mutationMapper;
+    @Autowired
+    private OffsetCalculator offsetCalculator;
 
-    public List<Mutation> getMutationsDetailed(List<String> geneticProfileStableIds, List<String> hugoGeneSymbols,
-                                               List<String> sampleStableIds, String sampleListStableId) {
+    @Override
+    public List<Mutation> getMutationsInMolecularProfileBySampleListId(String molecularProfileId, String sampleListId,
+                                                                       List<Integer> entrezGeneIds, Boolean snpOnly,
+                                                                       String projection, Integer pageSize,
+                                                                       Integer pageNumber, String sortBy,
+                                                                       String direction) {
 
-        return mutationMapper.getMutationsDetailed(geneticProfileStableIds, hugoGeneSymbols, sampleStableIds,
-                sampleListStableId);
+        return mutationMapper.getMutationsBySampleListId(molecularProfileId, sampleListId, entrezGeneIds, snpOnly,
+            projection, pageSize, offsetCalculator.calculate(pageSize, pageNumber), sortBy, direction);
     }
 
-    public List<Mutation> getMutations(List<Integer> sampleIds, List<Integer> entrezGeneIds, Integer geneticProfileId) {
+    @Override
+    public MutationMeta getMetaMutationsInMolecularProfileBySampleListId(String molecularProfileId, String sampleListId,
+                                                                         List<Integer> entrezGeneIds) {
 
-        return mutationMapper.getMutations(sampleIds, entrezGeneIds, geneticProfileId, false);
+        return mutationMapper.getMetaMutationsBySampleListId(molecularProfileId, sampleListId, entrezGeneIds, null);
     }
 
-    public List<Mutation> getMutations(List<Integer> sampleIds, Integer entrezGeneId, Integer geneticProfileId) {
+    @Override
+    public List<Mutation> getMutationsInMultipleMolecularProfiles(List<String> molecularProfileIds, 
+                                                                  List<String> sampleIds, List<Integer> entrezGeneIds, 
+                                                                  String projection, Integer pageSize, 
+                                                                  Integer pageNumber, String sortBy, String direction) {
 
-        return mutationMapper.getMutations(sampleIds, Arrays.asList(entrezGeneId), geneticProfileId, false);
+        return mutationMapper.getMutationsInMultipleMolecularProfiles(molecularProfileIds, sampleIds, entrezGeneIds, 
+            null, projection, pageSize, offsetCalculator.calculate(pageSize, pageNumber), sortBy, direction);
     }
 
-    public List<Mutation> getMutations(Integer entrezGeneId, Integer geneticProfileId) {
+    @Override
+    public MutationMeta getMetaMutationsInMultipleMolecularProfiles(List<String> molecularProfileIds,
+                                                                    List<String> sampleIds, 
+                                                                    List<Integer> entrezGeneIds) {
 
-        return mutationMapper.getMutations(null, Arrays.asList(entrezGeneId), geneticProfileId, false);
+        return mutationMapper.getMetaMutationsInMultipleMolecularProfiles(molecularProfileIds, sampleIds, entrezGeneIds,
+            null);
     }
 
-    public List<Mutation> getMutations(List<Integer> sampleIds, Integer geneticProfileId) {
+    @Override
+    public List<Mutation> fetchMutationsInMolecularProfile(String molecularProfileId, List<String> sampleIds,
+                                                           List<Integer> entrezGeneIds, Boolean snpOnly,
+                                                           String projection, Integer pageSize, Integer pageNumber,
+                                                           String sortBy, String direction) {
 
-        return mutationMapper.getMutations(sampleIds, null, geneticProfileId, false);
+        return mutationMapper.getMutationsBySampleIds(molecularProfileId, sampleIds, entrezGeneIds, snpOnly, projection,
+            pageSize, offsetCalculator.calculate(pageSize, pageNumber), sortBy, direction);
     }
 
-    public List<Mutation> getSimplifiedMutations(List<Integer> sampleIds, List<Integer> entrezGeneIds,
-                                                 Integer geneticProfileId) {
+    @Override
+    public MutationMeta fetchMetaMutationsInMolecularProfile(String molecularProfileId, List<String> sampleIds,
+                                                             List<Integer> entrezGeneIds) {
 
-        return mutationMapper.getMutations(sampleIds, entrezGeneIds, geneticProfileId, true);
+        return mutationMapper.getMetaMutationsBySampleIds(molecularProfileId, sampleIds, entrezGeneIds, null);
     }
 
-    public Boolean hasAlleleFrequencyData(Integer geneticProfileId, Integer sampleId) {
-        return mutationMapper.hasAlleleFrequencyData(geneticProfileId, sampleId);
+    @Override
+    public List<MutationCountByGene> getSampleCountByEntrezGeneIdsAndSampleIds(String molecularProfileId,
+                                                                               List<String> sampleIds,
+                                                                               List<Integer> entrezGeneIds) {
+
+        return mutationMapper.getSampleCountByEntrezGeneIdsAndSampleIds(molecularProfileId, sampleIds, entrezGeneIds,
+            null);
     }
 
-    public List<SignificantlyMutatedGene> getSignificantlyMutatedGenes(Integer geneticProfileId,
-                                                                       List<Integer> entrezGeneIds,
-                                                                       List<Integer> sampleIds,
-                                                                       Integer thresholdRecurrence,
-                                                                       Integer thresholdNumGenes) {
+    @Override
+    public List<MutationCountByGene> getPatientCountByEntrezGeneIdsAndSampleIds(String molecularProfileId,
+                                                                                List<String> patientIds,
+                                                                                List<Integer> entrezGeneIds) {
 
-        return getSignificantlyMutatedGenes(geneticProfileId, entrezGeneIds, sampleIds, thresholdRecurrence,
-                thresholdNumGenes, true);
+        return mutationMapper.getPatientCountByEntrezGeneIdsAndSampleIds(molecularProfileId, patientIds, entrezGeneIds,
+            null);
     }
 
-    public List<SignificantlyMutatedGene> getSignificantlyMutatedGenes(Integer geneticProfileId,
-                                                                       List<Integer> entrezGeneIds,
-                                                                       List<Integer> sampleIds,
-                                                                       Integer thresholdRecurrence,
-                                                                       Integer thresholdNumGenes,
-                                                                       boolean setGroupConcatMaxLen) {
+    @Override
+    public List<MutationCount> getMutationCountsInMolecularProfileBySampleListId(String molecularProfileId,
+                                                                                 String sampleListId) {
 
-        if (setGroupConcatMaxLen) {
-            mutationMapper.groupConcatMaxLenSet();
-        }
-        return mutationMapper.getSignificantlyMutatedGenes(geneticProfileId, entrezGeneIds, sampleIds,
-                thresholdRecurrence, thresholdNumGenes);
-
+        return mutationMapper.getMutationCountsBySampleListId(molecularProfileId, sampleListId);
     }
 
-    public List<MutationCount> countMutationEvents(Integer geneticProfileId, List<Integer> sampleIds) {
+    @Override
+    public List<MutationCount> fetchMutationCountsInMolecularProfile(String molecularProfileId, 
+                                                                     List<String> sampleIds) {
 
-        return mutationMapper.countMutationEvents(geneticProfileId, sampleIds);
+        return mutationMapper.getMutationCountsBySampleIds(molecularProfileId, sampleIds);
     }
 
-    public List<MutatedGeneSampleCount> countSamplesWithMutatedGenes(Integer geneticProfileId,
-                                                                     List<Integer> entrezGeneIds) {
+    @Override
+    public MutationCountByPosition getMutationCountByPosition(Integer entrezGeneId, Integer proteinPosStart,
+                                                              Integer proteinPosEnd) {
 
-        return mutationMapper.countSamplesWithMutatedGenes(geneticProfileId, entrezGeneIds);
-    }
-
-    public List<KeywordSampleCount> countSamplesWithKeywords(Integer geneticProfileId, List<String> keywords) {
-        return mutationMapper.countSamplesWithKeywords(geneticProfileId, keywords);
-    }
-
-    public List<Integer> getGenesOfMutations(List<Integer> mutationEventIds) {
-        return mutationMapper.getGenesOfMutations(mutationEventIds);
-    }
-
-    public List<String> getKeywordsOfMutations(List<Integer> mutationEventIds) {
-        return mutationMapper.getKeywordsOfMutations(mutationEventIds);
-    }
-
-    public List<AltCount> getMutationsCounts(String type, String hugoGeneSymbol, Integer start, Integer end,
-                                             List<String> cancerStudyIdentifiers, Boolean perStudy) {
-
-        return mutationMapper.getMutationsCounts(type, hugoGeneSymbol, start, end, cancerStudyIdentifiers, perStudy);
+        return mutationMapper.getMutationCountByPosition(entrezGeneId, proteinPosStart, proteinPosEnd);
     }
 }

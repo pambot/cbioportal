@@ -9,6 +9,7 @@ public class Gene implements Serializable {
     private String type;
     private String cytoband;
     private Integer length;
+    private String chromosome;
 
     public Integer getEntrezGeneId() {
         return entrezGeneId;
@@ -48,5 +49,13 @@ public class Gene implements Serializable {
 
     public void setLength(Integer length) {
         this.length = length;
+    }
+
+    public String getChromosome() {
+        return chromosome;
+    }
+
+    public void setChromosome(String chromosome) {
+        this.chromosome = chromosome;
     }
 }

@@ -29,11 +29,14 @@
  - You should have received a copy of the GNU Affero General Public License
  - along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --%>
-
 <%@ page import="org.mskcc.cbio.portal.servlet.QueryBuilder" %>
+<%@ page import="org.mskcc.cbio.portal.util.SessionServiceRequestWrapper" %>
 <%@ page import="org.mskcc.cbio.portal.servlet.ServletXssUtil" %>
 <%@ page import="org.mskcc.cbio.portal.util.GlobalProperties" %>
 <%@ page import="org.mskcc.cbio.portal.util.XssRequestWrapper" %>
+<%@ page import="org.codehaus.jackson.map.ObjectMapper" %>
+<%@ page import="org.apache.commons.lang.*" %>
+<%@ page import="java.util.List" %>
 
 <%
     String siteTitle = GlobalProperties.getTitle();
@@ -63,18 +66,41 @@
     geneList = servletXssUtil.getCleanerInput(geneList);
 
 
-    String oncokbUrl = (String) GlobalProperties.getOncoKBUrl();
+    String oncokbUrl = (String) GlobalProperties.getOncoKBApiUrl();
     boolean showMyCancerGenomeUrl = (Boolean) GlobalProperties.showMyCancerGenomeUrl();
     String oncokbGeneStatus = (String) GlobalProperties.getOncoKBGeneStatus();
     boolean showHotspot = (Boolean) GlobalProperties.showHotspot();
+    boolean showCivic = (Boolean) GlobalProperties.showCivic();
+    String civicUrl = (String) GlobalProperties.getCivicUrl();
     String userName = GlobalProperties.getAuthenticatedUserName();
+
+    //are we using session service for bookmarking?
+    boolean useSessionServiceBookmark = !StringUtils.isBlank(GlobalProperties.getSessionServiceUrl());
 
 %>
 
 <jsp:include page="global/header.jsp" flush="true"/>
 
+<script type="text/javascript" src="js/src/modifyQuery.js?<%=GlobalProperties.getAppVersion()%>"></script>
+
+<script>
+window.frontendConfig.historyType = 'memory';
+
+window.loadReactApp({ defaultRoute: 'blank' });
+    
+window.onReactAppReady(function(){
+    window.initModifyQueryComponent("modifyQueryButton", "querySelector");
+});
+</script>
+    
 <!-- for now, let's include these guys here and prevent clashes with the rest of the portal -->
-<script type="text/javascript" src="js/src/OncoKBConnector.js?<%=GlobalProperties.getAppVersion()%>"></script>
+<%@ include file="oncokb/oncokb-card-template.html" %>
+<%@ include file="civic/civic-qtip-template.html" %>
+<script type="text/javascript" src="js/src/civic/civicservice.js?<%=GlobalProperties.getAppVersion()%>"></script>
+<script type="text/javascript" src="js/src/oncokb/OncoKBCard.js?<%=GlobalProperties.getAppVersion()%>"></script>
+<script type="text/javascript" src="js/src/oncokb/OncoKBConnector.js?<%=GlobalProperties.getAppVersion()%>"></script>
+<script type="text/javascript" src="js/src/mutation/data/Hotspots3dDataProxy.js?<%=GlobalProperties.getAppVersion()%>"></script>
+<script type="text/javascript" src="js/src/mutation/column/AnnotationColumn.js?<%=GlobalProperties.getAppVersion()%>"></script>
 <script type="text/javascript" src="js/src/crosscancer.js?<%=GlobalProperties.getAppVersion()%>"></script>
 <script type="text/javascript" src="js/src/cross-cancer-plotly-plots.js?<%=GlobalProperties.getAppVersion()%>"></script>
 <script type="text/javascript" src="js/src/plots-tab/util/stylesheet.js"></script>
@@ -85,6 +111,8 @@
 <link href="css/data_table_jui.css?<%=GlobalProperties.getAppVersion()%>" type="text/css" rel="stylesheet" />
 <link href="css/mutationMapper.min.css?<%=GlobalProperties.getAppVersion()%>" type="text/css" rel="stylesheet" />
 <link href="css/crosscancer.css?<%=GlobalProperties.getAppVersion()%>" type="text/css" rel="stylesheet" />
+<link rel="stylesheet" type="text/css" href="css/oncokb.css?<%=GlobalProperties.getAppVersion()%>" />
+<link rel="stylesheet" type="text/css" href="css/civic.css?<%=GlobalProperties.getAppVersion()%>" />
 
 
 <%
@@ -102,18 +130,27 @@
 <%
     }
 %>
+<% 
+String sessionError = (String) request.getAttribute(SessionServiceRequestWrapper.SESSION_ERROR);
+if (sessionError != null) {  %>  
+<p id="session-warning" style="background-color:red;display:block;">
+    <img src="images/warning.gif"/>
+    <%= sessionError %>
+</p>
+<% } %>
 
-<table>
+    <table>
     <tr>
         <td>
 
             <div id="results_container">
-                <div id='modify_query' style='margin:20px;'>
-                    <button type='button' class='btn btn-primary' data-toggle='button' id='modify_query_btn'>
-                        Modify Query
-                    </button>
+                
+                <div id='modify_query'>
+                    <button id="modifyQueryButton" class="btn btn-primary" style="display: none;">Modify Query</button>
+                    <div id="querySelector" class="cbioportal-frontend"></div>
+                    <div id="reactRoot" class="hidden"></div>
                     <div style="margin-left:5px;display:none;" id="query_form_on_results_page">
-                        <%@ include file="query_form.jsp" %>
+                     
                     </div>
                 </div>
                 <div id="crosscancer-container">
@@ -124,10 +161,12 @@
         </td>
     </tr>
 </table>
-
+  
 <script>
     var oncokbGeneStatus = <%=oncokbGeneStatus%>;
     var showHotspot = <%=showHotspot%>;
+    var showCivic = <%=showCivic%>;
+    var civicUrl = '<%=civicUrl%>';
     var userName = '<%=userName%>';
     var enableMyCancerGenome = <%=showMyCancerGenomeUrl%>;
 
@@ -170,17 +209,14 @@
             $(".query-toggle").toggle();
         });
 
-        $("a.result-tab").click(function(){
-            if($(this).attr("href")=="#bookmark_email") {
-                $("#bookmark-link").attr("href",window.location.href);
-            }
-        });
 
-        $("#bookmark-link").attr("href", window.location.href);
-        $("#bitly-generator").click(function() {
-            bitlyURL(window.location.href);
+        $("#cc-bookmark-link").parent().click(function() {
+            <% if (useSessionServiceBookmark) { %>
+                addSessionServiceBookmark(window.location.href, $(this).children("#cc-bookmark-link").data('session'));
+            <% } else { %>
+                addURLBookmark();
+            <% } %>
         });
-
     });
 
 </script>
@@ -202,7 +238,11 @@
                 <a href="#cc-download" id="cc-download-link" title="Download all alterations or copy and paste into Excel">Download</a>
             </li>
             <li>
-                <a href='#cc-bookmark' class='result-tab' title="Bookmark or generate a URL for email">
+                <% if (useSessionServiceBookmark) { %>
+                <a href='#cc-bookmark' id='cc-bookmark-link' class='result-tab' title="Bookmark or generate a URL for email" data-session='<%= new ObjectMapper().writeValueAsString(request.getParameterMap()) %>'>
+                <% } else { %>
+                <a href='#cc-bookmark' id='cc-bookmark-link' class='result-tab' title="Bookmark or generate a URL for email">
+                <% } %>
                     Bookmark
                 </a>
             </li>
@@ -290,17 +330,15 @@
         </div>
 
         <div class="section" id="cc-bookmark">
-            <h4>Right click</b> on the link below to bookmark your results or send by email:</h4>
+            <h4>Right click on one of the links below to bookmark your results:</h4>
             <br/>
-            <a  id="bookmark-link" href="#">
-                <%=request.getAttribute(QueryBuilder.ATTRIBUTE_URL_BEFORE_FORWARDING)%>?...
-            </a>
-            <br/>
+            <div id='session-id'></div>
             <br/>
 
-            If you would like to use a <b>shorter URL that will not break in email postings</b>, you can use the<br><a href='https://bitly.com/'>bitly.com</a> service below:<BR>
-            <BR><button type="button" id="bitly-generator">Shorten URL</button>
+        <% if (GlobalProperties.getBitlyUser() != null) { %>
+            If you would like to use a <b>shorter URL that will not break in email postings</b>, you can use the<br><a href='https://bitly.com/'>bitly.com</a> url below:<BR>
             <div id='bitly'></div>
+        <% } %>
         </div>
 
     </div>
@@ -382,8 +420,13 @@
         <img width='14' height='14' src='images/mcg_logo.png'>
     </span>
     <span class='annotation-item chang_hotspot' alt='{{changHotspotAlt}}'>
-        <img width='14' height='14' src='images/oncokb-flame.svg'>
+        <img width='{{hotspotsImgWidth}}' height='{{hotspotsImgHeight}}' src='{{hotspotsImgSrc}}' alt='Recurrent Hotspot Symbol'>
     </span>
+    <% if (showCivic) { %>
+    <span class='annotation-item civic' proteinChange='{{proteinChange}}' geneSymbol='{{geneSymbol}}'>
+        <img width='14' height='14' src='images/ajax-loader.gif' alt='Civic Variant Entry'>
+    </span>
+    <% } %>
 </script>
 
 <script type="text/template" id="studies-with-no-data-tmpl">

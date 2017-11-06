@@ -41,6 +41,7 @@ import joptsimple.*;
 import java.util.*;
 import java.util.regex.*;
 import org.apache.commons.collections.map.MultiKeyMap;
+import org.apache.commons.lang.StringUtils;
 
 public class ImportClinicalData extends ConsoleRunnable {
 
@@ -109,6 +110,22 @@ public class ImportClinicalData extends ConsoleRunnable {
         
         public String toString() {return attributeType;}
     }
+    
+    public static enum DataTypes 
+    {
+        STRING,
+        NUMBER,
+        BOOLEAN;
+    	
+    	static public boolean has(String value) {
+    		try { 
+                return valueOf(value.toUpperCase()) != null; 
+            }
+            catch (IllegalArgumentException x) { 
+                return false;
+            }
+    	}
+    }
 
     public void setFile(CancerStudy cancerStudy, File clinicalDataFile, String attributesDatatype, boolean relaxed)
     {
@@ -138,7 +155,7 @@ public class ImportClinicalData extends ConsoleRunnable {
         int sampleIdIndex = findSampleIdColumn(columnAttrs);
 
         //validate required columns:
-        if (patientIdIndex < 0) { //TODO - for backwards compatibility maybe add and !attributesType.toString().equals("MIXED")? See next TODO in addDatum()
+        if (patientIdIndex < 0) {
         	//PATIENT_ID is required in both file types:
         	throw new RuntimeException("Aborting owing to failure to find " +
                     PATIENT_ID_COLUMN_NAME + 
@@ -187,6 +204,13 @@ public class ImportClinicalData extends ConsoleRunnable {
                     }
                     break;
             }
+            
+            //quick validation: datatypes values should be one of the valid types
+            for (String datatype : datatypes) {
+            	if (!DataTypes.has(datatype)) {
+            		throw new RuntimeException("Invalid value for datatype: " + datatype + ". Check the header rows of your data file."); 
+            	}	
+            }
                      
             priorities = splitFields(buff.readLine());
             colnames = splitFields(buff.readLine());
@@ -218,24 +242,21 @@ public class ImportClinicalData extends ConsoleRunnable {
                 new ClinicalAttribute(colnames[i].trim().toUpperCase(), displayNames[i],
                                       descriptions[i], datatypes[i],
                                       attributeTypes[i].equals(ClinicalAttribute.PATIENT_ATTRIBUTE),
-                                      priorities[i]);
+                                      priorities[i],
+                                      cancerStudy.getInternalId());
             attrs.add(attr);
             //skip PATIENT_ID / SAMPLE_ID columns, i.e. these are not clinical attributes but relational columns:
             if (attr.getAttrId().equals(PATIENT_ID_COLUMN_NAME) ||
             	attr.getAttrId().equals(SAMPLE_ID_COLUMN_NAME)) {
 	            continue;
             }
-        	ClinicalAttribute attrInDb = DaoClinicalAttribute.getDatum(attr.getAttrId());
-            if (null==attrInDb) {
-                DaoClinicalAttribute.addDatum(attr);
+            ClinicalAttribute attrInDb = DaoClinicalAttributeMeta.getDatum(attr.getAttrId(), cancerStudy.getInternalId());
+            if (attrInDb != null) {
+                ProgressMonitor.logWarning("Attribute " + attrInDb.getAttrId() + " found twice in your study!");
+                continue;
             }
-            else if (attrInDb.isPatientAttribute() != attr.isPatientAttribute()) {
-            	throw new DaoException("Illegal change in attribute type[SAMPLE/PATIENT] for attribute " + attr.getAttrId() + 
-            			". An attribute cannot change from SAMPLE type to PATIENT type (or vice-versa) during import. This should " + 
-            			"be changed manually first in DB.");
-            }
+            DaoClinicalAttributeMeta.addDatum(attr);
         }
-
         return attrs;
     }
    
@@ -251,14 +272,12 @@ public class ImportClinicalData extends ConsoleRunnable {
         String line;
         MultiKeyMap attributeMap = new MultiKeyMap();
         while ((line = buff.readLine()) != null) {
-
-            line = line.trim();
-            if (skipLine(line)) {
+            if (skipLine(line.trim())) {
                 continue;
             }
 
-            String[] fields = getFields(line, columnAttrs);
-            addDatum(fields, columnAttrs, attributeMap);
+            String[] fieldValues = getFieldValues(line, columnAttrs);
+            addDatum(fieldValues, columnAttrs, attributeMap);
         }
     }
 
@@ -267,15 +286,31 @@ public class ImportClinicalData extends ConsoleRunnable {
         return (line.isEmpty() || line.substring(0,1).equals(METADATA_PREFIX));
     }
 
-    private String[] getFields(String line, List<ClinicalAttribute> columnAttrs)
+    /**
+     * Takes in the given line and returns the list of field values by 
+     * splitting the line on DELIMITER.
+     *  
+     * @param line
+     * @param columnAttrs
+     * @return the list of values, one for each column. Value will be "" for empty columns.
+     */
+    private String[] getFieldValues(String line, List<ClinicalAttribute> columnAttrs)
     {
-        String[] fields = line.split(DELIMITER, -1);
-        if (fields.length < columnAttrs.size()) {
-            int origFieldsLen = fields.length;
-            fields = Arrays.copyOf(fields, columnAttrs.size());
-            Arrays.fill(fields, origFieldsLen, columnAttrs.size(), "");
+    	// split on delimiter:
+        String[] fieldValues = line.split(DELIMITER, -1);
+        
+        // validate: if number of fields is incorrect, give exception
+        if (fieldValues.length != columnAttrs.size()) {
+        	throw new IllegalArgumentException("Number of columns in line is not as expected. Expected: " + 
+        								columnAttrs.size() + " columns, found: " + fieldValues.length + ", for line: " + line);
         }
-        return fields; 
+        
+        // now iterate over lines and trim each value:
+        for (int i = 0; i < fieldValues.length; i++)
+        {
+        	fieldValues[i] = fieldValues[i].trim();
+        }
+        return fieldValues;
     }
 
     private boolean addDatum(String[] fields, List<ClinicalAttribute> columnAttrs, MultiKeyMap attributeMap) throws Exception
@@ -332,15 +367,6 @@ public class ImportClinicalData extends ConsoleRunnable {
     			throw new RuntimeException("Error: Sample " + stableSampleId + " was previously linked to another patient, and not to " + stablePatientId);
     		}
         	numSamplesProcessed++;
-        }
-
-        // this will happen when clinical file contains sample id, but not patient id
-        //TODO - this part, and the dummy patient added in addSampleToDatabase, can be removed as the field PATIENT_ID is now
-        //always required (as validated at start of importData() ). Probably kept here for "old" studies, but Ben's tests did not find anything...
-        // --> alternative would be to be less strict in validation at importData() and allow for missing PATIENT_ID when type is MIXED... 
-        if (internalPatientId == -1 && internalSampleId != -1) {
-            sample = DaoSample.getSampleById(internalSampleId);
-            internalPatientId = sample.getInternalPatientId();
         }
 
         for (int lc = 0; lc < fields.length; lc++) {
@@ -407,6 +433,10 @@ public class ImportClinicalData extends ConsoleRunnable {
     {
         return findAttributeColumnIndex(SAMPLE_ID_COLUMN_NAME, attrs);
     }
+    
+    private int findSampleTypeColumn(List<ClinicalAttribute> attrs) {
+        return findAttributeColumnIndex(SAMPLE_TYPE_COLUMN_NAME, attrs);
+    }
 
     private int findAttributeColumnIndex(String columnHeader, List<ClinicalAttribute> attrs)
     {
@@ -457,8 +487,21 @@ public class ImportClinicalData extends ConsoleRunnable {
 
     private int addSampleToDatabase(String sampleId, String[] fields, List<ClinicalAttribute> columnAttrs) throws Exception
     {
+        int sampleTypeIndex = findSampleTypeColumn(columnAttrs);
+        String sampleTypeStr = (sampleTypeIndex != -1) ? fields[sampleTypeIndex] : null;
+        if (sampleTypeStr != null) {
+            // want to match Sample.Type enum names
+            sampleTypeStr = sampleTypeStr.trim().toUpperCase().replaceAll(" ", "_");
+        }
+        Sample.Type sampleType = Sample.Type.has(sampleTypeStr) ? Sample.Type.valueOf(sampleTypeStr) : null;
+        
         int internalSampleId = -1;
         if (validSampleId(sampleId) && !StableIdUtil.isNormal(sampleId)) {
+            // want to try and capture normal sample types based on value for SAMPLE_TYPE
+            // if present in clinical data
+            if (sampleType != null && sampleType.isNormal()) {
+                return internalSampleId;
+            }
             String stablePatientId = getStablePatientId(sampleId, fields, columnAttrs);
             if (validPatientId(stablePatientId)) {
                 Patient patient = DaoPatient.getPatientByCancerStudyAndPatientId(cancerStudy.getInternalId(), stablePatientId);
@@ -467,9 +510,9 @@ public class ImportClinicalData extends ConsoleRunnable {
                     patient = DaoPatient.getPatientByCancerStudyAndPatientId(cancerStudy.getInternalId(), stablePatientId);
                 }
                 sampleId = StableIdUtil.getSampleId(sampleId);
-               	internalSampleId = DaoSample.addSample(new Sample(sampleId,
-                                                               patient.getInternalId(),
-                                                               cancerStudy.getTypeOfCancerId()));
+               	internalSampleId = DaoSample.addSample(new Sample(sampleId, patient.getInternalId(),
+                                                       cancerStudy.getTypeOfCancerId(),
+                                                       sampleTypeStr));
             }
         }
 

@@ -59,6 +59,8 @@ public class ResetDatabase {
         DaoCancerStudy.deleteAllRecords();
         DaoGeneOptimized daoGene = DaoGeneOptimized.getInstance();
         daoGene.deleteAllRecords();
+        DaoGeneset.deleteAllRecords();
+        DaoInfo.clearVersion();
         DaoSampleProfile.deleteAllRecords();
         DaoGeneticAlteration daoGenetic = DaoGeneticAlteration.getInstance();
         daoGenetic.deleteAllRecords();
@@ -83,8 +85,6 @@ public class ResetDatabase {
         daoSangerCensus.deleteAllRecords();
         DaoTextCache daoTextCache = new DaoTextCache();
         daoTextCache.deleteAllKeys();
-        DaoClinicalTrial daoClinicalTrial = DaoClinicalTrial.getInstance();
-        daoClinicalTrial.deleteAllRecords();
         DaoPatient.deleteAllRecords();
         DaoSample.deleteAllRecords();
         System.out.println("all database reset.");
