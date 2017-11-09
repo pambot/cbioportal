@@ -64,6 +64,15 @@
         WHERE gene.HUGO_GENE_SYMBOL = #{hugoGeneSymbol}
     </select>
 
+    <select id="getHugoPTMsByPrefix" resultType="org.cbioportal.model.Gene">
+        SELECT
+        <include refid="select">
+            <property name="prefix" value=""/>
+        </include>
+        FROM gene
+        WHERE gene.HUGO_GENE_SYMBOL LIKE CONCAT(#{hugoPTMPrefix}, '%')
+    </select>
+
     <select id="getAliasesOfGeneByEntrezGeneId" resultType="string">
         SELECT gene_alias.GENE_ALIAS
         FROM gene_alias

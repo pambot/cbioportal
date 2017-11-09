@@ -95,6 +95,22 @@ public class GeneServiceImpl implements GeneService {
     }
 
     @Override
+    public List<Gene> getHugoPTMsByPrefix(String hugoPTMPrefixInput) throws GeneNotFoundException {
+        
+        List<Gene> geneList;
+        
+        if (hugoPTMPrefixInput != null && hugoPTMPrefixInput.contains("_") && hugoPTMPrefixInput.endsWith("*")) {
+            String hugoPTMPrefix = hugoPTMPrefixInput.substring(0, hugoPTMPrefixInput.length() - 1);
+            geneList = geneRepository.getHugoPTMsByPrefix(hugoPTMPrefix);
+        } else {
+            throw new GeneNotFoundException(hugoPTMPrefixInput);
+        }
+
+        geneList.forEach(gene -> chromosomeCalculator.setChromosome(gene));
+        return geneList;
+    }
+
+    @Override
     public List<String> getAliasesOfGene(String geneId) throws GeneNotFoundException {
         
         getGene(geneId);

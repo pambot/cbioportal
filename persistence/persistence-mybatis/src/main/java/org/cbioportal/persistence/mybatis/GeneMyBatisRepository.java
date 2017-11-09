@@ -76,6 +76,12 @@ public class GeneMyBatisRepository implements GeneRepository {
     }
 
     @Override
+    public List<Gene> getHugoPTMsByPrefix(String hugoPTMPrefix) {
+
+        return geneMapper.getHugoPTMsByPrefix(hugoPTMPrefix, PersistenceConstants.DETAILED_PROJECTION);
+    }
+
+    @Override
     public List<String> getAliasesOfGeneByEntrezGeneId(Integer entrezGeneId) {
 
         return geneMapper.getAliasesOfGeneByEntrezGeneId(entrezGeneId);

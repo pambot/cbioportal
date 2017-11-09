@@ -46,6 +46,8 @@ public interface GeneService {
 
     Gene getGene(String geneId) throws GeneNotFoundException;
 
+    List<Gene> getHugoPTMsByPrefix(String hugoPTMPrefixInput) throws GeneNotFoundException;
+
     List<String> getAliasesOfGene(String geneId) throws GeneNotFoundException;
 
     List<Gene> fetchGenes(List<String> geneIds, String geneIdType, String projection);

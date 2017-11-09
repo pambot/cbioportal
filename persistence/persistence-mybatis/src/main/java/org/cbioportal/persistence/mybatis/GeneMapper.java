@@ -47,6 +47,8 @@ public interface GeneMapper {
 
     Gene getGeneByHugoGeneSymbol(String hugoGeneSymbol, String projection);
 
+    List<Gene> getHugoPTMsByPrefix(String hugoPTMPrefix, String projection);
+
     List<String> getAliasesOfGeneByEntrezGeneId(Integer entrezGeneId);
 
     List<String> getAliasesOfGeneByHugoGeneSymbol(String hugoGeneSymbol);

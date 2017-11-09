@@ -83,6 +83,15 @@ public class GeneController {
         return new ResponseEntity<>(geneService.getGene(geneId), HttpStatus.OK);
     }
 
+    @RequestMapping(value = "/genes/PTMs/{hugoPTMPrefixInput}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ApiOperation("Search for PTM matches based on a prefix")
+    public ResponseEntity<List<Gene>> getHugoPTMsByPrefix(
+        @ApiParam(required = true, value = "Hugo Gene Symbol PTM notation with wildcard after underscore e.g. A1BG_PY*")
+        @PathVariable String hugoPTMPrefixInput) throws GeneNotFoundException {
+
+        return new ResponseEntity<>(geneService.getHugoPTMsByPrefix(hugoPTMPrefixInput), HttpStatus.OK);
+    }
+
     @RequestMapping(value = "/genes/{geneId}/aliases", method = RequestMethod.GET,
         produces = MediaType.APPLICATION_JSON_VALUE)
     @ApiOperation("Get aliases of a gene")

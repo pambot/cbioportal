@@ -47,6 +47,8 @@ public interface GeneRepository {
 
     Gene getGeneByHugoGeneSymbol(String hugoGeneSymbol);
 
+    List<Gene> getHugoPTMsByPrefix(String hugoPTMPrefix);
+
     List<String> getAliasesOfGeneByEntrezGeneId(Integer entrezGeneId);
 
     List<String> getAliasesOfGeneByHugoGeneSymbol(String hugoGeneSymbol);
